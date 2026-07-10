@@ -1,0 +1,4 @@
+data/snapshots/
+*.pyc
+__pycache__/
+.env

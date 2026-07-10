@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://solarflare:solarflare@db:5432/solarflare
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
+      - JOB_DATA_DIR=/app/data/snapshots
+      - ENABLE_CRON_SCHEDULER=false
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+      - cron_data:/app/data/snapshots
+    restart: unless-stopped
+
+  # Dedicated cron worker (optional — backend also runs scheduler on startup)
+  scheduler:
+    build: ./backend
+    command: python -m jobs.run_scheduler
+    environment:
+      - JOB_DATA_DIR=/app/data/snapshots
+      - ENABLE_CRON_SCHEDULER=true
+    volumes:
+      - ./backend:/app
+      - cron_data:/app/data/snapshots
+    restart: unless-stopped
+
+  db:
+    image: timescale/timescaledb:pg15-latest
+    environment:
+      - POSTGRES_DB=solarflare
+      - POSTGRES_USER=solarflare
+      - POSTGRES_PASSWORD=solarflare
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  redis_data:
+  cron_data:

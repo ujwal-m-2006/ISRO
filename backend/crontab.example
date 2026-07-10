@@ -1,0 +1,21 @@
+# System crontab example (Linux/macOS) — alternative to the built-in APScheduler
+# Install: crontab backend/crontab.example
+# Requires: cd /path/to/ISRO/backend && python -m jobs.data_jobs (one-shot scripts)
+
+# Every minute — GOES X-ray flux
+* * * * * cd /app/backend && python -c "from jobs.data_jobs import job_fetch_flux; job_fetch_flux()" >> /var/log/solar-flux.log 2>&1
+
+# Every minute — live summary
+* * * * * cd /app/backend && python -c "from jobs.data_jobs import job_fetch_summary; job_fetch_summary()" >> /var/log/solar-summary.log 2>&1
+
+# Every 5 minutes — nowcast, forecast, alerts
+*/5 * * * * cd /app/backend && python -c "from jobs.data_jobs import job_fetch_nowcast, job_fetch_forecast, job_fetch_alerts; job_fetch_nowcast(); job_fetch_forecast(); job_fetch_alerts()" >> /var/log/solar-analysis.log 2>&1
+
+# Every 10 minutes — flare catalogue
+*/10 * * * * cd /app/backend && python -c "from jobs.data_jobs import job_fetch_flares; job_fetch_flares()" >> /var/log/solar-flares.log 2>&1
+
+# Every 15 minutes — active regions
+*/15 * * * * cd /app/backend && python -c "from jobs.data_jobs import job_fetch_regions; job_fetch_regions()" >> /var/log/solar-regions.log 2>&1
+
+# Hourly full sync
+0 * * * * cd /app/backend && python -c "from jobs.data_jobs import job_full_sync; job_full_sync()" >> /var/log/solar-fullsync.log 2>&1

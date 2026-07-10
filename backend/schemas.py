@@ -1,0 +1,166 @@
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+
+# Import authentication schemas
+from .auth import User, UserCreate, UserLogin, Token, TokenData
+
+# Base schemas
+class BaseSchema(BaseModel):
+    class Config:
+        orm_mode = True
+
+# SoLEXS observation schema
+class SoLEXSObservationBase(BaseSchema):
+    timestamp: datetime
+    soft_xray_flux: Optional[float] = None
+    energy_spectrum: Optional[List[float]] = None
+    photon_count: Optional[int] = None
+    temperature: Optional[float] = None
+    observation_time: Optional[datetime] = None
+    detector_health: Optional[str] = None
+    quality_flag: Optional[str] = None
+    instrument_status: Optional[str] = None
+    source: Optional[str] = "PRADAN"
+
+
+class SoLEXSObservationCreate(SoLEXSObservationBase):
+    pass
+
+
+class SoLEXSObservation(SoLEXSObservationBase):
+    id: int
+    created_at: datetime
+
+# HEL1OS observation schema
+class HEL1OSObservationBase(BaseSchema):
+    timestamp: datetime
+    hard_xray_flux: Optional[float] = None
+    energy_distribution: Optional[List[float]] = None
+    detector_count: Optional[int] = None
+    peak_energy: Optional[float] = None
+    observation_time: Optional[datetime] = None
+    detector_health: Optional[str] = None
+    quality_flag: Optional[str] = None
+    instrument_status: Optional[str] = None
+    source: Optional[str] = "PRADAN"
+
+
+class HEL1OSObservationCreate(HEL1OSObservationBase):
+    pass
+
+
+class HEL1OSObservation(HEL1OSObservationBase):
+    id: int
+    created_at: datetime
+
+# Prediction schema
+class PredictionBase(BaseSchema):
+    timestamp: datetime
+    prediction_type: str  # 'nowcast' or 'forecast'
+    time_horizon: Optional[str] = None  # '15min', '30min', '1hr', etc.
+    flare_class: Optional[str] = None  # 'A', 'B', 'C', 'M', 'X'
+    probability: Optional[float] = None
+    confidence: Optional[float] = None
+    expected_time: Optional[datetime] = None
+    prediction_interval: Optional[str] = None  # '15-30min', '1-2hr', etc.
+    model_used: Optional[str] = None
+    reasoning: Optional[str] = None
+    source: Optional[str] = "AI_MODEL"
+
+
+class PredictionCreate(PredictionBase):
+    pass
+
+
+class Prediction(PredictionBase):
+    id: int
+    created_at: datetime
+
+# Alert schema
+class AlertBase(BaseSchema):
+    timestamp: datetime
+    alert_level: str  # 'INFO', 'WARNING', 'CRITICAL'
+    alert_type: str  # 'M_CLASS_EXCEEDED', 'X_CLASS_EXCEEDED', etc.
+    reason: Optional[str] = None
+    confidence: Optional[float] = None
+    source: Optional[str] = None
+    acknowledged: bool = False
+
+
+class AlertCreate(AlertBase):
+    pass
+
+
+class Alert(AlertBase):
+    id: int
+    created_at: datetime
+
+# Instrument status schema
+class InstrumentStatusBase(BaseSchema):
+    instrument_name: str  # 'SoLEXS', 'HEL1OS'
+    status: str  # 'online', 'offline', 'degraded'
+    last_updated: datetime
+    health_score: Optional[float] = None
+    details: Optional[Dict[str, Any]] = None
+
+
+class InstrumentStatusCreate(InstrumentStatusBase):
+    pass
+
+
+class InstrumentStatus(InstrumentStatusBase):
+    id: int
+    created_at: datetime
+
+# API response schemas
+class LatestDataResponse(BaseSchema):
+    solexs: Optional[SoLEXSObservation] = None
+    hel1os: Optional[HEL1OSObservation] = None
+    last_updated: datetime
+    data_source: str
+
+
+class HistoricalDataResponse(BaseSchema):
+    data: List[Dict[str, Any]]
+    total: int
+    page: int
+    pages: int
+
+
+class NowcastResponse(BaseSchema):
+    current_flare_class: Optional[str] = None
+    current_activity_level: Optional[str] = None
+    probability_of_current_event: Optional[float] = None
+    current_flux: Optional[float] = None
+    expected_peak: Optional[float] = None
+    expected_duration: Optional[str] = None
+    affected_region: Optional[str] = None
+    current_confidence: Optional[float] = None
+    ai_explanation: Optional[str] = None
+    risk_level: Optional[str] = None
+    suggested_action: Optional[str] = None
+    last_update: datetime
+
+
+class ForecastResponse(BaseSchema):
+    predictions: List[Prediction]
+    last_updated: datetime
+
+
+class AlertResponse(BaseSchema):
+    alerts: List[Alert]
+    total_active: int
+    last_checked: datetime
+
+
+class StatusResponse(BaseSchema):
+    status: str
+    timestamp: datetime
+    services: Dict[str, str]
+
+# Health check schema
+class HealthCheckResponse(BaseSchema):
+    status: str
+    message: str
+    timestamp: datetime
