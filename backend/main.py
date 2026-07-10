@@ -118,5 +118,11 @@ async def sse_data_stream(request: Request):
 
 if __name__ == "__main__":
     import os
+    from pathlib import Path
     port = int(os.getenv("PORT", "8000"))
+    # Write the actual resolved port so the frontend's vite.config.ts can
+    # find this backend regardless of which port autoPort landed it on —
+    # hardcoding a fallback port here has repeatedly gone stale the moment
+    # a different session/process was already holding the "usual" port.
+    (Path(__file__).resolve().parent / ".dev-port").write_text(str(port), encoding="utf-8")
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
