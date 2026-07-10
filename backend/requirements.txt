@@ -2,7 +2,6 @@ fastapi==0.115.0
 uvicorn==0.32.0
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.31
-timescale==0.10.0
 redis==5.0.7
 pydantic==2.8.2
 python-jose[cryptography]==3.3.0
@@ -19,6 +18,7 @@ astropy==6.1.0
 pyfits==3.5
 requests==2.32.3
 python-dotenv==1.0.0
+supabase==2.9.1
 beautifulsoup4==4.12.3
 lxml==4.9.4
 schedule==1.2.0

@@ -14,12 +14,12 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: `http://localhost:${process.env.BACKEND_PORT || 58510}`,
+        target: `http://localhost:${process.env.BACKEND_PORT || 8000}`,
         changeOrigin: true,
         secure: false
       },
       '/ws': {
-        target: `http://localhost:${process.env.BACKEND_PORT || 58510}`,
+        target: `http://localhost:${process.env.BACKEND_PORT || 8000}`,
         changeOrigin: true,
         secure: false,
         ws: true
