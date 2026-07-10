@@ -1,0 +1,46 @@
+# Place this file at: .github/workflows/publish_flare_data.yml (in the ISRO repo)
+#
+# Runs backend/jobs/publish_to_space_weather.py on a schedule and pushes one
+# row + a flux chart to the Space_Weather site's Supabase project.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   SPACE_WEATHER_SUPABASE_URL           — Space_Weather's Supabase project URL
+#   SPACE_WEATHER_SUPABASE_SERVICE_KEY   — its service_role/secret key (never
+#                                           the anon/publishable key, never
+#                                           committed to the repo)
+#
+# NOTE: this does NOT need this repo's own DATABASE_URL / Postgres — the
+# services.cron_data get_*() functions fall back to a live NOAA fetch with no
+# local cron cache, which is always the case on a fresh runner.
+
+name: Publish flare data to Space Weather
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 minutes; adjust as needed
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install supabase matplotlib
+
+      - name: Publish flare data
+        env:
+          SPACE_WEATHER_SUPABASE_URL: ${{ secrets.SPACE_WEATHER_SUPABASE_URL }}
+          SPACE_WEATHER_SUPABASE_SERVICE_KEY: ${{ secrets.SPACE_WEATHER_SUPABASE_SERVICE_KEY }}
+        run: python jobs/publish_to_space_weather.py
