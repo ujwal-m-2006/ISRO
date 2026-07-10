@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -100,9 +101,18 @@ def start_scheduler(run_immediately: bool = True) -> BackgroundScheduler:
     logger.info("Cron scheduler started (UTC)")
 
     if run_immediately:
-        logger.info("Running initial full sync...")
-        job_full_sync()
-        job_check_pradan()
+        # Run in a background thread, not inline — this executes inside
+        # FastAPI's startup event, and uvicorn won't serve a single request
+        # (not even /health) until that event returns. job_full_sync alone
+        # chains ~13 external HTTP calls (NOAA, NASA DONKI) plus a PRADAN
+        # Keycloak login; if any of those is slow from wherever this is
+        # hosted, blocking here means the whole app never starts responding.
+        def _initial_sync() -> None:
+            logger.info("Running initial full sync (background)...")
+            job_full_sync()
+            job_check_pradan()
+
+        threading.Thread(target=_initial_sync, daemon=True, name="initial-sync").start()
 
     return _scheduler
 
