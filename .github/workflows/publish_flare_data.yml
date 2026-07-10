@@ -39,6 +39,21 @@ jobs:
           pip install -r requirements.txt
           pip install supabase matplotlib
 
+      # TEMPORARY — remove once the "Invalid API key" issue is confirmed
+      # fixed. Prints only lengths/prefixes, never the actual secret values.
+      - name: Debug secret shape (safe — no values printed)
+        env:
+          SPACE_WEATHER_SUPABASE_URL: ${{ secrets.SPACE_WEATHER_SUPABASE_URL }}
+          SPACE_WEATHER_SUPABASE_SERVICE_KEY: ${{ secrets.SPACE_WEATHER_SUPABASE_SERVICE_KEY }}
+        run: |
+          python -c "
+          import os
+          url = os.environ.get('SPACE_WEATHER_SUPABASE_URL', '')
+          key = os.environ.get('SPACE_WEATHER_SUPABASE_SERVICE_KEY', '')
+          print('URL length:', len(url), '| starts with https://:', url.startswith('https://'), '| ends with .co:', url.rstrip().endswith('.co'), '| has whitespace:', url != url.strip())
+          print('KEY length:', len(key), '| has whitespace:', key != key.strip(), '| prefix:', key[:8], '| looks like JWT (eyJ...):', key.startswith('eyJ'), '| looks like new secret format (sb_secret_...):', key.startswith('sb_secret_'))
+          "
+
       - name: Publish flare data
         env:
           SPACE_WEATHER_SUPABASE_URL: ${{ secrets.SPACE_WEATHER_SUPABASE_URL }}
