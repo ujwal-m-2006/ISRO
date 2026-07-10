@@ -43,4 +43,9 @@ jobs:
         env:
           SPACE_WEATHER_SUPABASE_URL: ${{ secrets.SPACE_WEATHER_SUPABASE_URL }}
           SPACE_WEATHER_SUPABASE_SERVICE_KEY: ${{ secrets.SPACE_WEATHER_SUPABASE_SERVICE_KEY }}
+          # `python jobs/publish_to_space_weather.py` puts jobs/ on sys.path,
+          # not backend/ itself — services/ lives directly under backend/, so
+          # PYTHONPATH=. (cwd = backend, via working-directory above) is
+          # needed for `from services.cron_data import ...` to resolve.
+          PYTHONPATH: .
         run: python jobs/publish_to_space_weather.py
