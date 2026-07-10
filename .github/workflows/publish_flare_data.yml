@@ -37,13 +37,16 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          # --upgrade matters here: requirements.txt may already pin an older
-          # supabase-py that predates support for the new sb_secret_/
-          # sb_publishable_-prefixed key format (it client-side validates keys
-          # as JWTs only and rejects anything else as "Invalid API key",
-          # before ever making a network call). A bare `pip install supabase`
-          # leaves an already-satisfied pinned version alone.
-          pip install --upgrade supabase matplotlib
+          # --upgrade --upgrade-strategy eager matters here: requirements.txt
+          # already pins an older supabase-py (predates support for the new
+          # sb_secret_/sb_publishable_-prefixed key format — it client-side
+          # validates keys as JWTs only and rejects anything else as "Invalid
+          # API key" before ever making a network call) AND an older
+          # websockets (predates the websockets.asyncio submodule the newer
+          # supabase's realtime dependency needs). `--upgrade` alone only
+          # upgrades supabase itself, not its already-pinned transitive deps
+          # like websockets — `--upgrade-strategy eager` forces those too.
+          pip install --upgrade --upgrade-strategy eager supabase matplotlib
 
       # TEMPORARY — remove once the "Invalid API key" issue is confirmed
       # fixed. Prints only lengths/prefixes, never the actual secret values.
