@@ -31,7 +31,7 @@ from datetime import datetime
 from supabase import create_client
 
 from services.cron_data import (
-    get_summary, get_flux, get_forecast, get_ensemble_forecast,
+    get_summary, get_flux, get_nowcast, get_forecast, get_ensemble_forecast,
     get_regions, get_cme_summary, get_earth_impact, get_storm_watches,
 )
 from services.noaa_live_service import FLARE_THRESHOLDS
@@ -51,35 +51,74 @@ def safe(fn, default=None):
         return default
 
 
-def generate_flux_chart(flux_data, hours_shown=24):
-    """X-ray flux history with GOES flare-class threshold lines (B/C/M/X),
-    same shape as the standard GOES flux plot this project's own frontend
-    likely already renders — a from-scratch matplotlib version for a static
-    PNG export, not a port of any specific frontend chart component (the
-    frontend is TypeScript/React, not something to port into Python)."""
-    points = flux_data.get('points', [])
-    if not points:
+def generate_flux_chart(flux_data, forecast_preds, hours_shown=24):
+    """Two panels in one image: observed X-ray flux history on top (with
+    GOES flare-class threshold lines), and the extended forecast's flare
+    class probability by horizon (1h through however far out the model
+    actually predicts, e.g. up to 72h) as a grouped bar chart underneath —
+    same data ExtendedForecastResponse.predictions exposes, just rendered as
+    a chart instead of only shown as panel text.
+
+    A from-scratch matplotlib version, not a port of any specific frontend
+    component (the frontend is TypeScript/React)."""
+    points = flux_data.get('points', []) if flux_data else []
+    has_flux = bool(points)
+    has_forecast = bool(forecast_preds)
+    if not has_flux and not has_forecast:
         return None
 
-    times = [p.get('time_tag') or p.get('time') for p in points]
-    times = [datetime.fromisoformat(t.replace('Z', '+00:00')) if isinstance(t, str) else t for t in times]
-    soft = [p.get('soft') for p in points]
+    fig, axes = plt.subplots(
+        2, 1, figsize=(9, 6.4), dpi=110,
+        gridspec_kw={'height_ratios': [3, 2]},
+    )
+    ax_flux, ax_bar = axes
 
-    fig, ax = plt.subplots(figsize=(9, 3.2), dpi=110)
-    ax.plot(times, soft, color='#facc15', linewidth=1.4, label='GOES X-ray flux (0.1-0.8nm)')
-    ax.set_yscale('log')
+    if has_flux:
+        times = [p.get('time_tag') or p.get('time') for p in points]
+        times = [datetime.fromisoformat(t.replace('Z', '+00:00')) if isinstance(t, str) else t for t in times]
+        soft = [p.get('soft') for p in points]
 
-    for label, value in (FLARE_THRESHOLDS or {}).items():
-        try:
-            v = float(value)
-        except (TypeError, ValueError):
-            continue
-        ax.axhline(y=v, color='#666666', linewidth=0.6, linestyle='dotted')
-        ax.text(times[0], v, f' {label}', fontsize=7, color='#888888', va='bottom')
+        ax_flux.plot(times, soft, color='#facc15', linewidth=1.4, label='GOES X-ray flux (0.1-0.8nm)')
+        ax_flux.set_yscale('log')
+        for label, value in (FLARE_THRESHOLDS or {}).items():
+            try:
+                v = float(value)
+            except (TypeError, ValueError):
+                continue
+            ax_flux.axhline(y=v, color='#666666', linewidth=0.6, linestyle='dotted')
+            ax_flux.text(times[0], v, f' {label}', fontsize=7, color='#888888', va='bottom')
+        ax_flux.set_ylabel('W/m²')
+        ax_flux.set_title(f'X-ray Flux (observed) — last {hours_shown}h', fontsize=10)
+        ax_flux.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HUTC'))
+    else:
+        ax_flux.text(0.5, 0.5, 'No flux data available', ha='center', va='center', transform=ax_flux.transAxes, fontsize=9, color='#888')
+        ax_flux.set_xticks([]); ax_flux.set_yticks([])
 
-    ax.set_ylabel('W/m²')
-    ax.set_title(f'X-ray Flux — last {hours_shown}h', fontsize=10)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d %HUTC'))
+    if has_forecast:
+        # Sort by hours_ahead so the bars read left-to-right nearest-to-farthest,
+        # regardless of what order the API returned them in.
+        preds = sorted(forecast_preds, key=lambda p: p.get('hours_ahead', 0))
+        labels = [p.get('time_horizon') or f"{p.get('hours_ahead', '?')}h" for p in preds]
+        c_vals = [p.get('c_class_chance_pct') or 0 for p in preds]
+        m_vals = [p.get('m_class_chance_pct') or 0 for p in preds]
+        x_vals = [p.get('x_class_chance_pct') or 0 for p in preds]
+
+        n = len(preds)
+        idx = range(n)
+        width = 0.25
+        ax_bar.bar([i - width for i in idx], c_vals, width, label='C-class+', color='#facc15')
+        ax_bar.bar(idx, m_vals, width, label='M-class+', color='#fb923c')
+        ax_bar.bar([i + width for i in idx], x_vals, width, label='X-class+', color='#ef4444')
+        ax_bar.set_xticks(list(idx))
+        ax_bar.set_xticklabels(labels, fontsize=8)
+        ax_bar.set_ylabel('Probability (%)')
+        ax_bar.set_ylim(0, 100)
+        ax_bar.set_title('Flare Class Probability by Horizon (forecast)', fontsize=10)
+        ax_bar.legend(fontsize=7, loc='upper right')
+    else:
+        ax_bar.text(0.5, 0.5, 'No extended forecast available', ha='center', va='center', transform=ax_bar.transAxes, fontsize=9, color='#888')
+        ax_bar.set_xticks([]); ax_bar.set_yticks([])
+
     fig.autofmt_xdate(rotation=30)
     fig.tight_layout()
 
@@ -92,30 +131,19 @@ def generate_flux_chart(flux_data, hours_shown=24):
 
 def build_summary():
     summary = get_summary()
+    nowcast = safe(get_nowcast, {})
     forecast = safe(get_forecast, {})
     ensemble = safe(get_ensemble_forecast, {})
     cme = safe(get_cme_summary, {})
     earth_impact = safe(get_earth_impact, {})
     storm_watches = safe(get_storm_watches, {})
 
+    # All horizons kept (1h through however far out the model predicts, e.g.
+    # 72h) — full C/M/X probabilities intact, not collapsed to one pick. The
+    # site renders these as-is, and the bar chart below needs every horizon,
+    # not just the first few.
     forecast_preds = (forecast or {}).get('predictions') or []
-    next_forecast = forecast_preds[0] if forecast_preds else {}
-
     ensemble_preds = (ensemble or {}).get('predictions') or []
-    next_ensemble = ensemble_preds[0] if ensemble_preds else {}
-
-    today_impact = (earth_impact or {}).get('today') or {}
-    impact_parts = []
-    for scale_key in ('radio_blackout', 'radiation_storm', 'geomagnetic_storm'):
-        detail = today_impact.get(scale_key)
-        if detail and detail.get('text') and detail.get('text') != 'None':
-            impact_parts.append(detail['text'])
-    earth_impact_summary = '; '.join(impact_parts) if impact_parts else None
-
-    watches = (storm_watches or {}).get('watches') if isinstance(storm_watches, dict) else None
-    storm_watch_text = None
-    if watches:
-        storm_watch_text = '; '.join(str(w) for w in watches[:3])
 
     row = {
         'current_class':          summary.get('current_class'),
@@ -126,28 +154,21 @@ def build_summary():
         'recent_flares_count_7d': summary.get('recent_flares_count_7d'),
         'active_regions_count':   summary.get('active_regions_count'),
         'top_active_region':      summary.get('top_active_region'),
-        'global_probabilities':   summary.get('global_probabilities'),
+        'global_probabilities':   summary.get('global_probabilities'),  # current C/M/X
         'risk_level':             summary.get('risk_level'),
 
-        'forecast_horizon':       next_forecast.get('time_horizon'),
-        'forecast_flare_class':   next_forecast.get('flare_class'),
-        'forecast_probability':   next_forecast.get('probability'),
-        'forecast_confidence':    next_forecast.get('confidence'),
-
-        'ensemble_flare_class':   next_ensemble.get('flare_class'),
-        'ensemble_probability':   next_ensemble.get('probability'),
-        'ensemble_horizon':       next_ensemble.get('time_horizon'),
+        'nowcast':  nowcast or None,          # ExtendedNowcastResponse-shaped dict — has its own c/m/x_class_probability_pct
+        'forecast': forecast_preds or None,   # list of ExtendedForecastItem (each: c/m/x_class_chance_pct per horizon)
+        'ensemble': ensemble_preds or None,   # list of EnsemblePrediction (each: .combined = {class: probability})
 
         'cme_earth_directed_count': (cme or {}).get('earth_directed_count'),
         'cme_total_count':          (cme or {}).get('total_cmes'),
-        'earth_impact_summary':     earth_impact_summary,
-        'earth_impact_max_scale':   (earth_impact or {}).get('max_scale_today'),
-
-        'storm_watch_text': storm_watch_text,
+        'earth_impact_today':       (earth_impact or {}).get('today') or None,
+        'storm_watches':            (storm_watches or {}).get('watches') or None,
     }
 
     flux = safe(lambda: get_flux(hours=24), {})
-    chart_png = generate_flux_chart(flux) if flux else None
+    chart_png = generate_flux_chart(flux, forecast_preds)
 
     return row, chart_png
 
