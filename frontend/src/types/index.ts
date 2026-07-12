@@ -407,3 +407,37 @@ export interface AllPredictionAccuracy {
   storm_watch: PredictionAccuracyCategory;
   cme_arrival: PredictionAccuracyCategory;
 }
+
+export interface FlareAlert {
+  id: string;
+  flare_class: string;
+  severity: 'Low' | 'Moderate' | 'High' | 'Severe' | 'Extreme';
+  active_region: string | null;
+  status: 'Increasing' | 'Decaying' | 'Ended';
+  start_time: string | null;
+  peak_time: string | null;
+  end_time: string | null;
+  peak_flux_wm2: number | null;
+  duration_minutes: number | null;
+  impact: string[];
+  radio_scale: string;
+  description: string;
+}
+
+export interface FlareAlertsSummary {
+  total_flares_today: number;
+  strongest_flare: string | null;
+  current_activity_level: string;
+  active_regions_count: number;
+  latest_flare: string | null;
+  radio_blackout_level: string;
+}
+
+export interface FlareAlertsResponse {
+  alerts: FlareAlert[];
+  ticker_alerts: FlareAlert[];
+  summary: FlareAlertsSummary;
+  last_updated: string;
+  data_source: string;
+  source_urls: string[];
+}

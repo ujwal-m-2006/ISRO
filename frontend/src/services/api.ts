@@ -6,6 +6,7 @@ import type {
   CMESummary,
   EarthImpact,
   EnsembleForecast,
+  FlareAlertsResponse,
   FluxHistory,
   ForecastPrediction,
   Glossary,
@@ -61,7 +62,10 @@ export const api = {
   getCMEIndicators: (days = 7) => fetchJson<CMEIndicators>(`/api/v1/space-weather/cme-indicators?days=${days}`),
   getStormWatches: () => fetchJson<StormWatches>('/api/v1/space-weather/storm-watches'),
   getPredictionAccuracy: () => fetchJson<AllPredictionAccuracy>('/api/v1/predictions/accuracy'),
+  getFlareAlerts: () => fetchJson<FlareAlertsResponse>('/api/v1/flare-alerts'),
 };
+
+export const FLARE_ALERTS_REFRESH_MS = 5 * 60_000;
 
 export const LIVE_REFRESH_MS = REFRESH_MS;
 

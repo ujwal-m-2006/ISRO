@@ -45,13 +45,18 @@ const config: Config = {
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'float': 'float 6s ease-in-out infinite',
+        'marquee': 'marquee 35s linear infinite',
       },
       keyframes: {
         float: {
           '0%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-10px)' },
           '100%': { transform: 'translateY(0px)' },
-        }
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
       }
     },
   },

@@ -36,6 +36,7 @@ from services.cron_data import (
     get_ensemble_forecast,
     get_cme_indicators,
     get_storm_watches,
+    get_flare_alerts,
 )
 from services.noaa_live_service import FLARE_THRESHOLDS, CLASS_MEANINGS
 
@@ -259,3 +260,8 @@ def get_cme_indicators_route(days: int = 7):
 @router.get("/space-weather/storm-watches")
 def get_storm_watches_route():
     return get_storm_watches()
+
+
+@router.get("/flare-alerts")
+def get_flare_alerts_route():
+    return get_flare_alerts()

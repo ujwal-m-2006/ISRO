@@ -28,6 +28,7 @@ from jobs.data_jobs import (
     job_fetch_alerts,
     job_fetch_cme,
     job_fetch_cme_indicators,
+    job_fetch_flare_alerts,
     job_fetch_storm_watches,
     job_fetch_earth_impact,
     job_fetch_ensemble_forecast,
@@ -58,6 +59,7 @@ def create_scheduler() -> BackgroundScheduler:
     # Analysis jobs
     scheduler.add_job(job_fetch_nowcast, CronTrigger(minute="*/5"), id="fetch_nowcast", replace_existing=True)
     scheduler.add_job(job_fetch_alerts, CronTrigger(minute="*/5"), id="fetch_alerts", replace_existing=True)
+    scheduler.add_job(job_fetch_flare_alerts, CronTrigger(minute="*/5"), id="fetch_flare_alerts", replace_existing=True)
     scheduler.add_job(job_fetch_forecast, CronTrigger(minute="*/5"), id="fetch_forecast", replace_existing=True)
 
     # Catalogue jobs

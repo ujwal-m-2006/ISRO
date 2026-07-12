@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { TopBar, MainNav, HeroCarousel, SiteFooter, SiteLogo, NrscBanner } from './components/shell';
+import { FlareAlertTicker, FlareDetailModal } from './components/flare-alerts';
+import type { FlareAlert } from './types';
 
 function App() {
   const location = useLocation();
   const showHero = location.pathname === '/';
+  const [selectedAlert, setSelectedAlert] = useState<FlareAlert | null>(null);
 
   return (
     <div className="min-h-screen bg-space-black text-space-light flex flex-col">
@@ -36,6 +39,7 @@ function App() {
         </div>
       </header>
       <MainNav />
+      <FlareAlertTicker onSelect={setSelectedAlert} />
       {showHero && <HeroCarousel />}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
@@ -45,6 +49,7 @@ function App() {
       </div>
 
       <SiteFooter />
+      {selectedAlert && <FlareDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} />}
     </div>
   );
 }

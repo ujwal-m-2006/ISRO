@@ -166,6 +166,17 @@ def job_fetch_alerts() -> None:
     _run("fetch_alerts", work)
 
 
+def job_fetch_flare_alerts() -> None:
+    def work() -> str:
+        from services.flare_alert_service import build_flare_alerts
+
+        data = build_flare_alerts()
+        job_store.save("flare_alerts", data)
+        return f"{len(data.get('alerts', []))} flare alerts"
+
+    _run("fetch_flare_alerts", work)
+
+
 def job_fetch_solar_wind() -> None:
     def work() -> str:
         summary = solar_wind_service.build_summary()
@@ -247,6 +258,7 @@ def job_full_sync() -> None:
     job_fetch_nowcast()
     job_fetch_forecast()
     job_fetch_alerts()
+    job_fetch_flare_alerts()
     job_fetch_solar_wind()
     job_fetch_cme()
     job_fetch_cme_indicators()

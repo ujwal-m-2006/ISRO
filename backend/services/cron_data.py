@@ -103,6 +103,14 @@ def get_alerts() -> Dict[str, Any]:
     return noaa_live_service.build_alerts()
 
 
+def get_flare_alerts() -> Dict[str, Any]:
+    cached = job_store.load("flare_alerts", max_age_seconds=300)
+    if cached:
+        return cached
+    from services.flare_alert_service import build_flare_alerts
+    return build_flare_alerts()
+
+
 def get_cron_status() -> Dict[str, Any]:
     return job_store.get_status()
 

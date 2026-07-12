@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataSourceBadge, FlareClassBadge } from '../components/live';
 import { LoadingState, PageHeader, Panel, formatTime, getAlertStyles } from '../components/ui';
-import { LIVE_REFRESH_MS, api } from '../services/api';
+import { FlareDashboardCards, FlareDetailModal, FlareNoticeBoard } from '../components/flare-alerts';
+import { LIVE_REFRESH_MS, FLARE_ALERTS_REFRESH_MS, api } from '../services/api';
+import type { FlareAlert } from '../types';
 
 function Alerts() {
   const alerts = useQuery({ queryKey: ['alerts'], queryFn: api.getAlerts, refetchInterval: LIVE_REFRESH_MS });
   const summary = useQuery({ queryKey: ['live-summary'], queryFn: api.getLiveSummary, refetchInterval: LIVE_REFRESH_MS });
+  const flareAlerts = useQuery({ queryKey: ['flare-alerts'], queryFn: api.getFlareAlerts, refetchInterval: FLARE_ALERTS_REFRESH_MS });
+  const [selectedAlert, setSelectedAlert] = useState<FlareAlert | null>(null);
 
   if (alerts.isLoading) return <LoadingState message="Loading live alerts..." />;
 
@@ -45,6 +49,26 @@ function Alerts() {
           </div>
         ))}
       </div>
+
+      <PageHeader title="Solar Flare Alerts & Notices" subtitle="Every real flare event from NOAA's GOES catalogue, with severity, impact, and radio blackout scale" />
+      {flareAlerts.data && <DataSourceBadge source={flareAlerts.data.data_source} updated={flareAlerts.data.last_updated} />}
+
+      {flareAlerts.isLoading ? (
+        <LoadingState message="Loading solar flare notices..." />
+      ) : flareAlerts.isError ? (
+        <Panel title="Solar Flare Notice Board">
+          <p className="text-red-600 text-sm">Live solar flare data is temporarily unavailable.</p>
+        </Panel>
+      ) : flareAlerts.data ? (
+        <>
+          <FlareDashboardCards data={flareAlerts.data} />
+          <Panel title="Solar Flare Notice Board (latest 20)">
+            <FlareNoticeBoard onSelect={setSelectedAlert} />
+          </Panel>
+        </>
+      ) : null}
+
+      {selectedAlert && <FlareDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} />}
     </div>
   );
 }
