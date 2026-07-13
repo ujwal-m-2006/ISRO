@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { NowcastStatisticalChart, PredictedStatisticalChart } from '../components/charts';
+import { NowcastStatisticalChart, PredictionTableTrendChart } from '../components/charts';
 import { DataSourceBadge, FlareClassBadge, MeaningBox } from '../components/live';
 import { LoadingState, PageHeader, Panel, StatCard } from '../components/ui';
 import { LIVE_REFRESH_MS, api, formatPct, formatTime } from '../services/api';
@@ -35,7 +35,6 @@ function Predictions() {
 
   const predictedChartData = ensemblePredictions.map((p) => ({
     horizon: p.time_horizon,
-    c: p.combined.c,
     m: p.combined.m,
     x: p.combined.x,
   }));
@@ -83,8 +82,8 @@ function Predictions() {
 
       {/* Flare prediction */}
       <PageHeader title="Solar Flare Forecast" subtitle="Probability by time horizon, from the 3-model ensemble" />
-      <Panel title="Predicted Probability by Horizon (ensemble model)">
-        <PredictedStatisticalChart data={predictedChartData} />
+      <Panel title="Prediction Table Trend (M-class / X-class chance)">
+        <PredictionTableTrendChart data={predictedChartData} />
       </Panel>
       <Panel title="Nowcast — Current-Moment Probability">
         {nowcast.isLoading ? (

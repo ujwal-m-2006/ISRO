@@ -183,6 +183,27 @@ export function PredictedStatisticalChart({ data }: { data: { horizon: string; c
   );
 }
 
+// Statistical trend line — mirrors exactly the columns shown in the
+// ensemble forecast table below it (M-class Chance, X-class Chance),
+// as a continuous line rather than bars grouped by horizon category.
+export function PredictionTableTrendChart({ data }: { data: { horizon: string; m: number; x: number }[] }) {
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="horizon" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
+          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
+          <Legend />
+          <Line type="monotone" dataKey="m" name="M-class Chance" stroke={PREDICTED_COLORS.m} strokeWidth={2.5} dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="x" name="X-class Chance" stroke={PREDICTED_COLORS.x} strokeWidth={2.5} dot={{ r: 4 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 // A third, again-distinct palette for the nowcast (current-moment) snapshot.
 const NOWCAST_COLORS = { c: '#4338ca', m: '#0369a1', x: '#be123c' };
 
