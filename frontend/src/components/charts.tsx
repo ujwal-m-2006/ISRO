@@ -159,6 +159,52 @@ export function ForecastProbabilityChart({ data }: { data: { horizon: string; c:
   );
 }
 
+// Distinct palette from ForecastProbabilityChart's blue/purple/red, so the
+// Predictions tab's ensemble-model chart is visually distinguishable at a
+// glance from the plain NOAA forecast chart it replaced.
+const PREDICTED_COLORS = { c: '#0f766e', m: '#b45309', x: '#9d174d' };
+
+export function PredictedStatisticalChart({ data }: { data: { horizon: string; c: number; m: number; x: number }[] }) {
+  return (
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="horizon" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
+          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Bar dataKey="c" name="C-class chance % (ensemble)" fill={PREDICTED_COLORS.c} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="m" name="M-class chance % (ensemble)" fill={PREDICTED_COLORS.m} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="x" name="X-class chance % (ensemble)" fill={PREDICTED_COLORS.x} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// A third, again-distinct palette for the nowcast (current-moment) snapshot.
+const NOWCAST_COLORS = { c: '#4338ca', m: '#0369a1', x: '#be123c' };
+
+export function NowcastStatisticalChart({ data }: { data: { label: string; c: number; m: number; x: number }[] }) {
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="label" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
+          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Bar dataKey="c" name="C-class chance % (nowcast)" fill={NOWCAST_COLORS.c} radius={[4, 4, 0, 0]} barSize={48} />
+          <Bar dataKey="m" name="M-class chance % (nowcast)" fill={NOWCAST_COLORS.m} radius={[4, 4, 0, 0]} barSize={48} />
+          <Bar dataKey="x" name="X-class chance % (nowcast)" fill={NOWCAST_COLORS.x} radius={[4, 4, 0, 0]} barSize={48} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function swTime(p: SolarWindPoint) {
   const t = p.time_tag;
   if (!t) return '';

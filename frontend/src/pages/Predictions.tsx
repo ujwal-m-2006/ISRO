@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ForecastProbabilityChart } from '../components/charts';
+import { NowcastStatisticalChart, PredictedStatisticalChart } from '../components/charts';
 import { DataSourceBadge, FlareClassBadge, MeaningBox } from '../components/live';
 import { LoadingState, PageHeader, Panel, StatCard } from '../components/ui';
 import { LIVE_REFRESH_MS, api, formatPct, formatTime } from '../services/api';
@@ -16,6 +16,7 @@ function scaleColor(scale: string) {
 function Predictions() {
   const forecast = useQuery({ queryKey: ['forecast'], queryFn: api.getForecasts, refetchInterval: LIVE_REFRESH_MS });
   const ensemble = useQuery({ queryKey: ['forecast-ensemble'], queryFn: api.getEnsembleForecast, refetchInterval: LIVE_REFRESH_MS });
+  const nowcast = useQuery({ queryKey: ['nowcast'], queryFn: api.getNowcast, refetchInterval: LIVE_REFRESH_MS });
   const watches = useQuery({ queryKey: ['storm-watches'], queryFn: api.getStormWatches, refetchInterval: LIVE_REFRESH_MS });
   const indicators = useQuery({ queryKey: ['cme-indicators', 7], queryFn: () => api.getCMEIndicators(7), refetchInterval: LIVE_REFRESH_MS });
   const accuracy = useQuery({ queryKey: ['prediction-accuracy'], queryFn: api.getPredictionAccuracy, refetchInterval: LIVE_REFRESH_MS });
@@ -32,12 +33,21 @@ function Predictions() {
   const highestMProb = ensemblePredictions.reduce((max, p) => (p.combined.m > max ? p.combined.m : max), 0);
   const nearestHorizon = ensemblePredictions[0];
 
-  const chartData = predictions.map((p) => ({
+  const predictedChartData = ensemblePredictions.map((p) => ({
     horizon: p.time_horizon,
-    c: p.c_class_chance_pct ?? p.probability * 100,
-    m: p.m_class_chance_pct ?? 0,
-    x: p.x_class_chance_pct ?? 0,
+    c: p.combined.c,
+    m: p.combined.m,
+    x: p.combined.x,
   }));
+
+  const nowcastChartData = nowcast.data
+    ? [{
+        label: 'Right Now',
+        c: nowcast.data.c_class_probability_pct ?? 0,
+        m: nowcast.data.m_class_probability_pct ?? 0,
+        x: nowcast.data.x_class_probability_pct ?? 0,
+      }]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -73,8 +83,15 @@ function Predictions() {
 
       {/* Flare prediction */}
       <PageHeader title="Solar Flare Forecast" subtitle="Probability by time horizon, from the 3-model ensemble" />
-      <Panel title="Flare Class Probability by Horizon (C / M / X %)">
-        <ForecastProbabilityChart data={chartData} />
+      <Panel title="Predicted Probability by Horizon (ensemble model)">
+        <PredictedStatisticalChart data={predictedChartData} />
+      </Panel>
+      <Panel title="Nowcast — Current-Moment Probability">
+        {nowcast.isLoading ? (
+          <LoadingState message="Loading nowcast..." />
+        ) : (
+          <NowcastStatisticalChart data={nowcastChartData} />
+        )}
       </Panel>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
