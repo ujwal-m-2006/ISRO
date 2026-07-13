@@ -8,7 +8,7 @@
 
 create table if not exists predictions (
   id bigint generated always as identity primary key,
-  category text not null check (category in ('ensemble_flare', 'storm_watch', 'cme_arrival')),
+  category text not null check (category in ('ensemble_flare', 'storm_watch', 'cme_arrival', 'single_model_flare', 'dual_model_flare')),
   dedup_key text not null,
   data jsonb not null default '{}'::jsonb,
   verified boolean not null default false,

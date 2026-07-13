@@ -139,6 +139,46 @@ function Predictions() {
         </table>
       </div>
 
+      {/* Model comparison: single vs dual vs multi model, each tracked and verified separately */}
+      <PageHeader title="Model Comparison" subtitle="Single, dual, and multi-model predictions — each recorded and verified against real NOAA outcomes separately" />
+      <Panel title="Which model is actually predicting best?">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {([
+            { key: 'single_model_flare' as const, name: 'single_model' as const, label: 'Single Model', desc: 'NOAA official forecast alone (1 signal)' },
+            { key: 'dual_model_flare' as const, name: 'dual_model' as const, label: 'Dual Model', desc: 'NOAA + live flux-trend, equally weighted (2 signals)' },
+            { key: 'ensemble_flare' as const, name: 'multi_model' as const, label: 'Multi Model', desc: 'All 3 signals, adaptively weighted (3 signals)' },
+          ]).map(({ key, name, label, desc }) => {
+            const c = accuracy.data?.[key];
+            const isBest = accuracy.data?.best_flare_model.model === name;
+            return (
+              <div
+                key={key}
+                className={`rounded-xl p-5 border-2 relative ${isBest ? 'border-green-500 bg-green-50' : 'border-space-blue/20 bg-space-dark'}`}
+              >
+                {isBest && (
+                  <span className="absolute -top-3 left-4 px-2 py-0.5 text-xs font-bold rounded-full bg-green-600 text-white">
+                    Best so far
+                  </span>
+                )}
+                <p className="text-sm text-space-gray mt-1">{label}</p>
+                <p className="text-3xl font-bold mt-1">{c?.accuracy_pct != null ? `${c.accuracy_pct}%` : '—'}</p>
+                <p className="text-xs text-space-gray mt-2">{desc}</p>
+                <p className="text-xs text-space-gray mt-2 pt-2 border-t border-space-blue/10">
+                  {c ? `${c.correct} correct / ${c.total_verified} verified · ${c.total_pending} awaiting window` : 'No predictions recorded yet'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        {accuracy.data?.best_flare_model && (
+          <p className="text-xs text-space-gray mt-4 pt-3 border-t border-space-blue/10">{accuracy.data.best_flare_model.note}</p>
+        )}
+        <p className="text-xs text-space-gray mt-2">
+          The multi-model blend adapts its own weighting toward whichever variant has actually measured most accurate so far — once enough predictions are verified, future multi-model forecasts automatically lean more on the winning approach instead of using a fixed 50/30/20 split.
+          {ensemble.data?.adaptive_weights_active && <span className="text-space-light font-medium"> Adaptive weighting is currently active.</span>}
+        </p>
+      </Panel>
+
       {/* Storm watch */}
       <PageHeader title="Geomagnetic Storm Prediction" subtitle="NOAA forecaster-issued day-by-day watch" />
       {activeWatch ? (

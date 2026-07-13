@@ -18,16 +18,56 @@ separately, so the basis for the number is visible rather than a black box.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from services.noaa_live_service import noaa_live_service
 
-# Ensemble weights — NOAA's own issued forecast is authoritative and weighted
-# highest; trend and historical-frequency are supporting signals.
+logger = logging.getLogger(__name__)
+
+# Default ensemble weights — NOAA's own issued forecast is authoritative and
+# weighted highest; trend and historical-frequency are supporting signals.
+# These are the starting point only: _adaptive_weights() below shifts them
+# based on which combination (single/dual/multi model) has actually been
+# measured most accurate against real outcomes so far.
 WEIGHT_NOAA = 0.5
 WEIGHT_TREND = 0.3
 WEIGHT_HISTORY = 0.2
+
+
+def _adaptive_weights() -> Tuple[float, float, float]:
+    """Adjusts the multi-model blend toward whichever variant (single model
+    alone / dual model / full multi-model) has the best real, verified
+    accuracy so far — not a static guess. Falls back to the default weights
+    above until there's enough verified prediction history to judge from
+    (accuracy_pct is None until at least one prediction has been checked
+    against a real outcome), so this never claims false confidence early on.
+    """
+    try:
+        from services import prediction_store
+
+        single_acc = prediction_store.get_accuracy_summary("single_model_flare").get("accuracy_pct")
+        dual_acc = prediction_store.get_accuracy_summary("dual_model_flare").get("accuracy_pct")
+        multi_acc = prediction_store.get_accuracy_summary("ensemble_flare").get("accuracy_pct")
+    except Exception as exc:
+        logger.warning("Adaptive weight lookup failed, using defaults: %s", exc)
+        return WEIGHT_NOAA, WEIGHT_TREND, WEIGHT_HISTORY
+
+    if single_acc is None or dual_acc is None or multi_acc is None:
+        return WEIGHT_NOAA, WEIGHT_TREND, WEIGHT_HISTORY
+
+    accuracies = {"single": single_acc, "dual": dual_acc, "multi": multi_acc}
+    best = max(accuracies, key=lambda k: accuracies[k])
+
+    if best == "single":
+        # NOAA's own forecast alone has out-predicted the blends — lean on it
+        return 0.8, 0.15, 0.05
+    if best == "dual":
+        # Adding the historical-frequency signal hasn't helped — drop its weight
+        return 0.55, 0.35, 0.10
+    # Multi-model blend is already winning — keep the default 3-way split
+    return WEIGHT_NOAA, WEIGHT_TREND, WEIGHT_HISTORY
 
 HORIZONS = [
     ("1 hour", 1),
@@ -84,11 +124,20 @@ def _model_c_history(regions: List[Dict[str, Any]]) -> Dict[str, float]:
     return {"c": c_score, "m": m_score, "x": x_score}
 
 
+def _class_from(scores: Dict[str, float]) -> Tuple[str, float]:
+    if scores["x"] >= 15:
+        return "X", scores["x"] / 100
+    if scores["m"] >= 25:
+        return "M", scores["m"] / 100
+    return "C", scores["c"] / 100
+
+
 def build_ensemble_forecast() -> Dict[str, Any]:
     summary = noaa_live_service.build_live_summary()
     regions = noaa_live_service.fetch_active_regions()
     global_prob = summary.get("global_probabilities") or {}
     trend = summary["flux_trend_pct_30min"]
+    w_noaa, w_trend, w_history = _adaptive_weights()
 
     predictions = []
     for i, (label, hours) in enumerate(HORIZONS):
@@ -96,17 +145,21 @@ def build_ensemble_forecast() -> Dict[str, Any]:
         model_b = _model_b_trend(trend, hours)
         model_c = _model_c_history(regions)
 
-        combined = {
-            k: round(min(99, model_a[k] * WEIGHT_NOAA + model_b[k] * WEIGHT_TREND + model_c[k] * WEIGHT_HISTORY), 1)
+        # Three tracked variants, each recorded and verified separately so
+        # their real accuracy can be compared honestly rather than assumed:
+        #   single = NOAA's own official forecast alone (1 model)
+        #   dual   = NOAA + live flux-trend, equally weighted (2 models)
+        #   multi  = all 3 signals, blended with the adaptive weights above
+        single = {k: round(model_a[k], 1) for k in ("c", "m", "x")}
+        dual = {k: round((model_a[k] + model_b[k]) / 2, 1) for k in ("c", "m", "x")}
+        multi = {
+            k: round(min(99, model_a[k] * w_noaa + model_b[k] * w_trend + model_c[k] * w_history), 1)
             for k in ("c", "m", "x")
         }
 
-        if combined["x"] >= 15:
-            flare_class, prob = "X", combined["x"] / 100
-        elif combined["m"] >= 25:
-            flare_class, prob = "M", combined["m"] / 100
-        else:
-            flare_class, prob = "C", combined["c"] / 100
+        single_class, single_prob = _class_from(single)
+        dual_class, dual_prob = _class_from(dual)
+        flare_class, prob = _class_from(multi)
 
         expected = datetime.now(timezone.utc) + timedelta(hours=hours)
 
@@ -118,13 +171,15 @@ def build_ensemble_forecast() -> Dict[str, Any]:
                 "expected_time": expected.isoformat(),
                 "flare_class": flare_class,
                 "probability": round(prob, 3),
-                "combined": combined,
+                "combined": multi,
+                "single_model": {"flare_class": single_class, "probability": round(single_prob, 3), **single},
+                "dual_model": {"flare_class": dual_class, "probability": round(dual_prob, 3), **dual},
                 "models": {
                     "noaa_official": {k: round(v, 1) for k, v in model_a.items()},
                     "flux_trend": {k: round(v, 1) for k, v in model_b.items()},
                     "historical_frequency": {k: round(v, 1) for k, v in model_c.items()},
                 },
-                "weights": {"noaa_official": WEIGHT_NOAA, "flux_trend": WEIGHT_TREND, "historical_frequency": WEIGHT_HISTORY},
+                "weights": {"noaa_official": w_noaa, "flux_trend": w_trend, "historical_frequency": w_history},
             }
         )
 
@@ -132,11 +187,14 @@ def build_ensemble_forecast() -> Dict[str, Any]:
         "predictions": predictions,
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "data_source": summary["data_source"],
+        "adaptive_weights_active": (w_noaa, w_trend, w_history) != (WEIGHT_NOAA, WEIGHT_TREND, WEIGHT_HISTORY),
         "methodology": (
-            "Weighted ensemble of 3 real statistical signals: NOAA's own official active-region + "
-            "SWPC outlook probabilities (50%), live GOES flux-trend extrapolation (30%), and each "
-            "active region's historical C/M/X event frequency this rotation (20%). This is a "
-            "transparent statistical blend, not a trained machine-learning model — solar flare "
-            "timing and magnitude cannot be predicted with certainty by any method."
+            "Three tracked prediction variants, each recorded and verified against real NOAA outcomes "
+            "separately: single-model (NOAA's own official active-region + SWPC outlook probabilities "
+            "alone), dual-model (NOAA + live GOES flux-trend extrapolation, equally weighted), and "
+            "multi-model (all 3 signals including historical C/M/X event frequency, blended with weights "
+            "that adapt toward whichever variant has actually measured most accurate so far). This is a "
+            "transparent statistical blend, not a trained machine-learning model — solar flare timing and "
+            "magnitude cannot be predicted with certainty by any method."
         ),
     }

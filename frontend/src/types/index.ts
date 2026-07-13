@@ -312,6 +312,14 @@ export interface CMEArrivalEstimate {
   uncertainty_note?: string;
 }
 
+export interface ModelVariantScore {
+  flare_class: string;
+  probability: number;
+  c: number;
+  m: number;
+  x: number;
+}
+
 export interface EnsemblePrediction {
   id: number;
   time_horizon: string;
@@ -320,6 +328,8 @@ export interface EnsemblePrediction {
   flare_class: string;
   probability: number;
   combined: { c: number; m: number; x: number };
+  single_model: ModelVariantScore;
+  dual_model: ModelVariantScore;
   models: {
     noaa_official: { c: number; m: number; x: number };
     flux_trend: { c: number; m: number; x: number };
@@ -332,6 +342,7 @@ export interface EnsembleForecast {
   predictions: EnsemblePrediction[];
   last_updated: string;
   data_source: string;
+  adaptive_weights_active: boolean;
   methodology: string;
 }
 
@@ -402,10 +413,19 @@ export interface PredictionAccuracyCategory {
   recent: Record<string, any>[];
 }
 
+export interface BestFlareModel {
+  model: 'single_model' | 'dual_model' | 'multi_model' | null;
+  accuracy_pct: number | null;
+  note: string;
+}
+
 export interface AllPredictionAccuracy {
   ensemble_flare: PredictionAccuracyCategory;
+  single_model_flare: PredictionAccuracyCategory;
+  dual_model_flare: PredictionAccuracyCategory;
   storm_watch: PredictionAccuracyCategory;
   cme_arrival: PredictionAccuracyCategory;
+  best_flare_model: BestFlareModel;
 }
 
 export interface FlareAlert {

@@ -82,35 +82,72 @@ def _kp_to_g_scale(kp: float) -> int:
 
 # --- Recording (called frequently — dedup prevents duplicate spam) ---------
 
-def record_ensemble_predictions() -> int:
-    from services.flare_ensemble_service import build_ensemble_forecast
+# Maps each tracked model variant to the field in build_ensemble_forecast()'s
+# per-horizon prediction dict that holds its class/probabilities, and the
+# Supabase category it's recorded/verified under.
+_MODEL_VARIANTS = {
+    "ensemble_flare": {"class_key": "flare_class", "scores_key": "combined"},
+    "single_model_flare": {"class_key": None, "scores_key": "single_model"},  # class lives inside single_model
+    "dual_model_flare": {"class_key": None, "scores_key": "dual_model"},
+}
 
-    forecast = build_ensemble_forecast()
+
+def _record_variant(category: str, forecast_predictions: List[Dict[str, Any]]) -> int:
+    cfg = _MODEL_VARIANTS[category]
     recorded = 0
-    for p in forecast.get("predictions", []):
+    for p in forecast_predictions:
         if p.get("time_horizon") not in ("1 hour", "24 hours"):
             continue  # verifying every horizon isn't necessary; these two give a fast + slow check
         target = p.get("expected_time")
         if not target:
             continue
+
+        scores = p.get(cfg["scores_key"]) or {}
+        flare_class = scores.get("flare_class") if cfg["class_key"] is None else p.get(cfg["class_key"])
+        m_pct = scores.get("m")
+        x_pct = scores.get("x")
+        if flare_class is None:
+            continue
+
         # Dedup to one snapshot per horizon per 30-minute recording slot —
         # not per exact target time, which drifts every run since it's
         # "now + N hours" on a rolling forecast.
         slot = datetime.now(timezone.utc).replace(minute=(datetime.now(timezone.utc).minute // 30) * 30, second=0, microsecond=0)
         dedup_key = f"{p['time_horizon']}:{slot.isoformat()}"
         ok = prediction_store.record(
-            "ensemble_flare",
+            category,
             {
                 "time_horizon": p["time_horizon"],
                 "target_time": target,
-                "predicted_flare_class": p.get("flare_class"),
-                "predicted_m_pct": p.get("combined", {}).get("m"),
-                "predicted_x_pct": p.get("combined", {}).get("x"),
+                "predicted_flare_class": flare_class,
+                "predicted_m_pct": m_pct,
+                "predicted_x_pct": x_pct,
             },
             dedup_key,
         )
         recorded += int(ok)
     return recorded
+
+
+def record_ensemble_predictions() -> int:
+    from services.flare_ensemble_service import build_ensemble_forecast
+
+    forecast = build_ensemble_forecast()
+    return _record_variant("ensemble_flare", forecast.get("predictions", []))
+
+
+def record_single_model_predictions() -> int:
+    from services.flare_ensemble_service import build_ensemble_forecast
+
+    forecast = build_ensemble_forecast()
+    return _record_variant("single_model_flare", forecast.get("predictions", []))
+
+
+def record_dual_model_predictions() -> int:
+    from services.flare_ensemble_service import build_ensemble_forecast
+
+    forecast = build_ensemble_forecast()
+    return _record_variant("dual_model_flare", forecast.get("predictions", []))
 
 
 def record_storm_watches() -> int:
@@ -162,8 +199,13 @@ def record_cme_arrivals() -> int:
 
 
 def record_all() -> Dict[str, int]:
+    from services.flare_ensemble_service import build_ensemble_forecast
+
+    forecast_predictions = build_ensemble_forecast().get("predictions", [])
     return {
-        "ensemble_flare": record_ensemble_predictions(),
+        "ensemble_flare": _record_variant("ensemble_flare", forecast_predictions),
+        "single_model_flare": _record_variant("single_model_flare", forecast_predictions),
+        "dual_model_flare": _record_variant("dual_model_flare", forecast_predictions),
         "storm_watch": record_storm_watches(),
         "cme_arrival": record_cme_arrivals(),
     }
@@ -171,12 +213,15 @@ def record_all() -> Dict[str, int]:
 
 # --- Verification (called less frequently) ----------------------------------
 
-def verify_ensemble_predictions() -> int:
+def _verify_flare_variant(category: str) -> int:
+    """Shared verification logic for any flare-class prediction variant
+    (single/dual/multi-model) — all three are checked against the same real
+    NOAA GOES flux history, just recorded under different categories."""
     from services.noaa_live_service import noaa_live_service
 
     now = datetime.now(timezone.utc)
     verified = 0
-    for entry in prediction_store.list_unverified("ensemble_flare"):
+    for entry in prediction_store.list_unverified(category):
         target = datetime.fromisoformat(entry["target_time"])
         if now < target + timedelta(minutes=15):
             continue  # target window hasn't fully elapsed yet
@@ -198,12 +243,24 @@ def verify_ensemble_predictions() -> int:
         correct = predicted_letter == actual_letter
 
         prediction_store.mark_verified(
-            "ensemble_flare",
+            category,
             entry["dedup_key"],
             {"actual_max_class": actual_class, "actual_max_flux_wm2": max_flux, "correct": correct},
         )
         verified += 1
     return verified
+
+
+def verify_ensemble_predictions() -> int:
+    return _verify_flare_variant("ensemble_flare")
+
+
+def verify_single_model_predictions() -> int:
+    return _verify_flare_variant("single_model_flare")
+
+
+def verify_dual_model_predictions() -> int:
+    return _verify_flare_variant("dual_model_flare")
 
 
 def verify_storm_watches() -> int:
@@ -267,14 +324,37 @@ def verify_cme_arrivals() -> int:
 def verify_all() -> Dict[str, int]:
     return {
         "ensemble_flare": verify_ensemble_predictions(),
+        "single_model_flare": verify_single_model_predictions(),
+        "dual_model_flare": verify_dual_model_predictions(),
         "storm_watch": verify_storm_watches(),
         "cme_arrival": verify_cme_arrivals(),
     }
 
 
 def get_all_accuracy() -> Dict[str, Any]:
+    single = prediction_store.get_accuracy_summary("single_model_flare")
+    dual = prediction_store.get_accuracy_summary("dual_model_flare")
+    multi = prediction_store.get_accuracy_summary("ensemble_flare")
+
+    # Best model so far — only declared once every variant actually has a
+    # verified accuracy number; otherwise there's nothing real to compare.
+    variants = {"single_model": single, "dual_model": dual, "multi_model": multi}
+    verified_variants = {name: v for name, v in variants.items() if v.get("accuracy_pct") is not None}
+    best_model = max(verified_variants, key=lambda n: verified_variants[n]["accuracy_pct"]) if verified_variants else None
+
     return {
-        "ensemble_flare": prediction_store.get_accuracy_summary("ensemble_flare"),
+        "ensemble_flare": multi,
+        "single_model_flare": single,
+        "dual_model_flare": dual,
         "storm_watch": prediction_store.get_accuracy_summary("storm_watch"),
         "cme_arrival": prediction_store.get_accuracy_summary("cme_arrival"),
+        "best_flare_model": {
+            "model": best_model,
+            "accuracy_pct": verified_variants[best_model]["accuracy_pct"] if best_model else None,
+            "note": (
+                "Not enough verified predictions yet across all three variants to compare."
+                if best_model is None
+                else f"'{best_model}' has the highest measured accuracy so far among predictions old enough to verify."
+            ),
+        },
     }
