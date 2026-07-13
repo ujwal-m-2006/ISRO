@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { NowcastStatisticalChart, PredictionTableTrendChart } from '../components/charts';
+import { LiveVsPredictedChart, type LiveVsPredictedPoint } from '../components/charts';
 import { DataSourceBadge, FlareClassBadge, MeaningBox } from '../components/live';
 import { LoadingState, PageHeader, Panel, StatCard } from '../components/ui';
 import { LIVE_REFRESH_MS, api, formatPct, formatTime } from '../services/api';
@@ -33,20 +33,33 @@ function Predictions() {
   const highestMProb = ensemblePredictions.reduce((max, p) => (p.combined.m > max ? p.combined.m : max), 0);
   const nearestHorizon = ensemblePredictions[0];
 
-  const predictedChartData = ensemblePredictions.map((p) => ({
-    horizon: p.time_horizon,
-    m: p.combined.m,
-    x: p.combined.x,
-  }));
-
-  const nowcastChartData = nowcast.data
-    ? [{
-        label: 'Right Now',
-        c: nowcast.data.c_class_probability_pct ?? 0,
-        m: nowcast.data.m_class_probability_pct ?? 0,
-        x: nowcast.data.x_class_probability_pct ?? 0,
-      }]
+  // Single unified timeline: the one real "live" point (right now, from the
+  // nowcast) followed by the ensemble model's predicted M/X-class chances
+  // across each future horizon — so live vs predicted is visually obvious
+  // on one chart rather than split across two.
+  const nowM = nowcast.data?.m_class_probability_pct ?? 0;
+  const nowX = nowcast.data?.x_class_probability_pct ?? 0;
+  const liveVsPredicted: LiveVsPredictedPoint[] = nowcast.data
+    ? [
+        {
+          time: 'Now (Live)',
+          fullTime: `${formatTime(nowcast.data.last_update)} — Live observation`,
+          flareClass: nowcast.data.current_flare_class,
+          live: nowM,
+          predictedM: nowM,
+          predictedX: nowX,
+        },
+        ...ensemblePredictions.map((p) => ({
+          time: p.time_horizon,
+          fullTime: `${formatTime(p.expected_time)} — Predicted`,
+          flareClass: p.flare_class,
+          predictedM: p.combined.m,
+          predictedX: p.combined.x,
+        })),
+      ]
     : [];
+
+  const flareAccuracy = accuracy.data?.ensemble_flare;
 
   return (
     <div className="space-y-6">
@@ -81,15 +94,24 @@ function Predictions() {
       </div>
 
       {/* Flare prediction */}
-      <PageHeader title="Solar Flare Forecast" subtitle="Probability by time horizon, from the 3-model ensemble" />
-      <Panel title="Prediction Table Trend (M-class / X-class chance)">
-        <PredictionTableTrendChart data={predictedChartData} />
-      </Panel>
-      <Panel title="Nowcast — Current-Moment Probability">
+      <PageHeader title="Solar Flare Forecast" subtitle="Live observation now, then the 3-model ensemble's predicted probability at each future horizon" />
+      <Panel title="Live vs Predicted Flare Probability">
         {nowcast.isLoading ? (
-          <LoadingState message="Loading nowcast..." />
+          <LoadingState message="Loading live + predicted data..." />
         ) : (
-          <NowcastStatisticalChart data={nowcastChartData} />
+          <>
+            <LiveVsPredictedChart data={liveVsPredicted} />
+            <p className="text-xs text-space-gray mt-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full mr-1" style={{ background: '#0e7490' }} /> Solid teal = <strong>Live</strong> (actually observed right now, from NOAA GOES).{' '}
+              <span className="inline-block w-2.5 h-2.5 rounded-full mr-1 ml-2" style={{ background: '#b45309' }} /> Dashed amber/maroon = <strong>Predicted</strong> (ensemble model forecast for each future hour horizon, with real UTC time and most-likely class in the tooltip).
+            </p>
+            {flareAccuracy && (
+              <p className="text-xs text-space-gray mt-2 pt-2 border-t border-space-blue/10">
+                Model accuracy so far: <strong className="text-space-light">{flareAccuracy.accuracy_pct != null ? `${flareAccuracy.accuracy_pct}%` : 'not enough verified predictions yet'}</strong>
+                {flareAccuracy.total_verified > 0 && ` (${flareAccuracy.correct} correct out of ${flareAccuracy.total_verified} predictions verified against real NOAA outcomes so far, ${flareAccuracy.total_pending} more still awaiting their target window)`}.
+              </p>
+            )}
+          </>
         )}
       </Panel>
       <div className="overflow-x-auto">

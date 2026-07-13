@@ -159,68 +159,50 @@ export function ForecastProbabilityChart({ data }: { data: { horizon: string; c:
   );
 }
 
-// Distinct palette from ForecastProbabilityChart's blue/purple/red, so the
-// Predictions tab's ensemble-model chart is visually distinguishable at a
-// glance from the plain NOAA forecast chart it replaced.
-const PREDICTED_COLORS = { c: '#0f766e', m: '#b45309', x: '#9d174d' };
+// Live-vs-Predicted timeline — same continuous-line visual language as
+// DualFluxChart, but for flare probability instead of flux: one solid line
+// for the single real "live" (nowcast) data point right now, and dashed
+// lines for the ensemble model's predicted M/X-class chances stretching
+// out across future horizons, so it's visually obvious which segment is
+// observed vs forecast.
+const LIVE_PREDICTED_COLORS = { live: '#0e7490', predictedM: '#b45309', predictedX: '#9d174d' };
 
-export function PredictedStatisticalChart({ data }: { data: { horizon: string; c: number; m: number; x: number }[] }) {
+export interface LiveVsPredictedPoint {
+  time: string;
+  fullTime: string;
+  flareClass?: string;
+  live?: number;
+  predictedM?: number;
+  predictedX?: number;
+}
+
+export function LiveVsPredictedChart({ data }: { data: LiveVsPredictedPoint[] }) {
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
-          <XAxis dataKey="horizon" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
-          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <Tooltip contentStyle={tooltipStyle} />
+          <XAxis dataKey="time" stroke={CHART_COLORS.axis} tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={55} />
+          <YAxis
+            stroke={CHART_COLORS.axis}
+            tick={{ fontSize: 10 }}
+            domain={[0, 100]}
+            tickFormatter={(v) => `${v}%`}
+            label={{ value: 'Flare probability %', angle: -90, position: 'insideLeft', fontSize: 10, fill: CHART_COLORS.axis }}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            labelFormatter={(_, payload) => (payload && payload[0] ? (payload[0].payload as LiveVsPredictedPoint).fullTime : '')}
+            formatter={(value: number, name: string, item: any) => {
+              const cls = (item?.payload as LiveVsPredictedPoint)?.flareClass;
+              return [`${value}%${cls ? ` — most likely ${cls}-class` : ''}`, name];
+            }}
+          />
           <Legend />
-          <Bar dataKey="c" name="C-class chance % (ensemble)" fill={PREDICTED_COLORS.c} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="m" name="M-class chance % (ensemble)" fill={PREDICTED_COLORS.m} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="x" name="X-class chance % (ensemble)" fill={PREDICTED_COLORS.x} radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// Statistical trend line — mirrors exactly the columns shown in the
-// ensemble forecast table below it (M-class Chance, X-class Chance),
-// as a continuous line rather than bars grouped by horizon category.
-export function PredictionTableTrendChart({ data }: { data: { horizon: string; m: number; x: number }[] }) {
-  return (
-    <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
-          <XAxis dataKey="horizon" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
-          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
-          <Legend />
-          <Line type="monotone" dataKey="m" name="M-class Chance" stroke={PREDICTED_COLORS.m} strokeWidth={2.5} dot={{ r: 4 }} />
-          <Line type="monotone" dataKey="x" name="X-class Chance" stroke={PREDICTED_COLORS.x} strokeWidth={2.5} dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="live" name="Live (observed now)" stroke={LIVE_PREDICTED_COLORS.live} strokeWidth={3} dot={{ r: 6 }} connectNulls={false} />
+          <Line type="monotone" dataKey="predictedM" name="Predicted — M-class %" stroke={LIVE_PREDICTED_COLORS.predictedM} strokeWidth={2.5} strokeDasharray="6 3" dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="predictedX" name="Predicted — X-class %" stroke={LIVE_PREDICTED_COLORS.predictedX} strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3 }} />
         </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// A third, again-distinct palette for the nowcast (current-moment) snapshot.
-const NOWCAST_COLORS = { c: '#4338ca', m: '#0369a1', x: '#be123c' };
-
-export function NowcastStatisticalChart({ data }: { data: { label: string; c: number; m: number; x: number }[] }) {
-  return (
-    <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
-          <XAxis dataKey="label" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
-          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Legend />
-          <Bar dataKey="c" name="C-class chance % (nowcast)" fill={NOWCAST_COLORS.c} radius={[4, 4, 0, 0]} barSize={48} />
-          <Bar dataKey="m" name="M-class chance % (nowcast)" fill={NOWCAST_COLORS.m} radius={[4, 4, 0, 0]} barSize={48} />
-          <Bar dataKey="x" name="X-class chance % (nowcast)" fill={NOWCAST_COLORS.x} radius={[4, 4, 0, 0]} barSize={48} />
-        </BarChart>
       </ResponsiveContainer>
     </div>
   );
