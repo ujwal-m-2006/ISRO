@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { TrainedModelMetricsChart, TrainedModelProbabilityChart } from '../components/charts';
 import { DataSourceBadge, MeaningBox } from '../components/live';
 import { LoadingState, PageHeader, Panel } from '../components/ui';
 import { api, formatTime } from '../services/api';
@@ -10,6 +11,72 @@ const VARIANT_META = {
   dual_model: { label: 'Dual Model', accent: 'from-space-teal to-space-cyan' },
   multi_model: { label: 'Multi Model', accent: 'from-space-purple to-space-fuchsia' },
 } as const;
+
+const SCROLL_TEXT =
+  "Single Model = trained on NOAA GOES-18 X-ray flux only, one data source.   •   " +
+  "Dual Model = trained on NOAA GOES-18 X-ray flux + real Aditya-L1 SoLEXS light-curve data, two data sources combined.   •   " +
+  "Multi Model = a voting ensemble that blends the Single and Dual trained models together.   •   " +
+  "Target predicted: whether a C-class-or-above GOES longwave flare will occur within the next 6 hours.   •   " +
+  "Every model is a genuine scikit-learn classifier fit on real historical data with a temporal train/test split — trained on earlier data, tested on later data it never saw during training.   •   " +
+  "Reported accuracy, precision, and recall come from that real held-out test set, not an assumed or asserted number.   •   " +
+  "This is distinct from the Predictions tab, which uses a transparent hand-weighted statistical blend of signals, not a trained model.   •   ";
+
+function ScrollingDescription() {
+  const loop = SCROLL_TEXT + SCROLL_TEXT;
+  return (
+    <div className="bg-isro-navy-dark border border-space-blue/30 rounded-lg overflow-hidden">
+      <div className="flex items-center">
+        <span className="shrink-0 bg-space-blue text-white text-[11px] font-bold uppercase tracking-wide px-3 py-2 z-10">
+          Methodology
+        </span>
+        <div className="overflow-hidden flex-1 group">
+          <div className="flex animate-marquee whitespace-nowrap py-2 group-hover:[animation-play-state:paused]">
+            <span className="text-xs text-white/85 px-4">{loop}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WarningBanner({ trainingWindow }: { trainingWindow?: { adityal1_available: boolean } }) {
+  return (
+    <div className="rounded-xl border-2 border-orange-500/60 bg-orange-50 p-5">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl leading-none">⚠️</span>
+        <div>
+          <p className="font-bold text-orange-900 mb-2">Important — Read Before Interpreting These Results</p>
+          <ul className="text-sm text-orange-900 space-y-1.5 list-disc list-inside">
+            <li>
+              <strong>Small training window:</strong> trained on roughly 7–10 days of real data (NOAA's free live API only exposes
+              a rolling 7-day history). This is not a multi-year archive-scale dataset.
+            </li>
+            <li>
+              <strong>Target is C-class-or-above, not M/X specifically:</strong> a window this short has too few real M/X-class
+              events to fit a statistically meaningful classifier for those specifically.
+            </li>
+            <li>
+              <strong>Preliminary result, not a final one:</strong> accuracy, precision, and recall numbers should be read as an
+              honest early signal — a larger training window would give more statistically reliable numbers.
+            </li>
+            <li>
+              <strong>Not for operational decision-making:</strong> this is a research/demonstration model, not a validated
+              operational forecasting system. No solar flare prediction system — trained or statistical — can predict with certainty.
+            </li>
+            <li>
+              <strong>Dual/Multi model live predictions depend on infrastructure:</strong> they need a live Aditya-L1 signal
+              (PRADAN credentials configured + the hourly refresh job to have run). If unavailable, this is reported explicitly
+              rather than silently substituted with a NOAA-only number.
+              {trainingWindow && !trainingWindow.adityal1_available && (
+                <span className="font-semibold"> Aditya-L1 data was not available during this specific training run.</span>
+              )}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function VariantCard({ id, variant }: { id: keyof typeof VARIANT_META; variant: TrainedModelVariant }) {
   const meta = VARIANT_META[id];
@@ -72,6 +139,29 @@ function TrainedModel() {
     );
   }
 
+  const variantOrder: (keyof typeof VARIANT_META)[] = ['single_model', 'dual_model', 'multi_model'];
+
+  const metricsChartData = variantOrder
+    .map((id) => {
+      const v = data.variants[id];
+      if (!v || v.test_accuracy == null) return null;
+      return {
+        model: VARIANT_META[id].label,
+        accuracy: Math.round((v.test_accuracy ?? 0) * 1000) / 10,
+        precision: Math.round((v.test_precision ?? 0) * 1000) / 10,
+        recall: Math.round((v.test_recall ?? 0) * 1000) / 10,
+      };
+    })
+    .filter((d): d is NonNullable<typeof d> => d !== null);
+
+  const probabilityChartData = variantOrder
+    .map((id) => {
+      const v = data.variants[id];
+      if (!v || !v.prediction_available || v.probability_pct == null) return null;
+      return { model: VARIANT_META[id].label, probability: v.probability_pct };
+    })
+    .filter((d): d is NonNullable<typeof d> => d !== null);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -80,6 +170,10 @@ function TrainedModel() {
         status="ML Model"
       />
       <DataSourceBadge source="NOAA GOES-18 + Aditya-L1 SoLEXS (real training data)" updated={data.trained_at} />
+
+      <ScrollingDescription />
+
+      <WarningBanner trainingWindow={data.training_window} />
 
       <MeaningBox
         title="How this differs from the Predictions tab"
@@ -104,9 +198,21 @@ function TrainedModel() {
         </Panel>
       )}
 
+      {metricsChartData.length > 0 && (
+        <Panel title="Model Comparison — Real Held-Out Test Metrics">
+          <TrainedModelMetricsChart data={metricsChartData} />
+        </Panel>
+      )}
+
+      {probabilityChartData.length > 0 && (
+        <Panel title="Live Probability by Model — Right Now">
+          <TrainedModelProbabilityChart data={probabilityChartData} />
+        </Panel>
+      )}
+
       <PageHeader title="Live Predictions by Model" subtitle="Same real-time inputs, three different trained models — see which dataset combination each one uses" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(Object.keys(VARIANT_META) as (keyof typeof VARIANT_META)[]).map((id) => {
+        {variantOrder.map((id) => {
           const variant = data.variants[id];
           return variant ? <VariantCard key={id} id={id} variant={variant} /> : null;
         })}

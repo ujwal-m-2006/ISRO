@@ -314,3 +314,49 @@ export function IntensityChart({ regions }: { regions: { name: string; intensity
     </div>
   );
 }
+
+// Trained-model comparison — real accuracy/precision/recall from each
+// model's own held-out test set, and each model's current live
+// probability output, side by side.
+const TRAINED_MODEL_COLORS = { accuracy: '#0e7490', precision: '#7e22ce', recall: '#c2410c' };
+
+export function TrainedModelMetricsChart({ data }: { data: { model: string; accuracy: number; precision: number; recall: number }[] }) {
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="model" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
+          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
+          <Legend />
+          <Bar dataKey="accuracy" name="Test Accuracy" fill={TRAINED_MODEL_COLORS.accuracy} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="precision" name="Precision" fill={TRAINED_MODEL_COLORS.precision} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="recall" name="Recall" fill={TRAINED_MODEL_COLORS.recall} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+const LIVE_PROB_COLORS = ['#1a3d8f', '#0f766e', '#7e22ce'];
+
+export function TrainedModelProbabilityChart({ data }: { data: { model: string; probability: number }[] }) {
+  return (
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="model" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
+          <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, 'Live probability']} />
+          <Bar dataKey="probability" name="Live probability (C-class-or-above, next 6h)" radius={[4, 4, 0, 0]} barSize={64}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={LIVE_PROB_COLORS[i % LIVE_PROB_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
