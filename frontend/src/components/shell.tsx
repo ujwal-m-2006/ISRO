@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   { name: 'Predictions', path: '/predictions' },
+  { name: 'Trained Model', path: '/trained-model' },
   {
     name: 'Space Weather',
     children: [

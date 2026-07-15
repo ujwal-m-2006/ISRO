@@ -82,6 +82,56 @@ def job_check_pradan() -> None:
     _run("check_pradan", work)
 
 
+def job_fetch_adityal1_features() -> None:
+    """Downloads and parses the single most recent real SoLEXS light curve
+    available, caching just the derived counts+trend feature (not the raw
+    FITS data) for trained_model_service.py's live dual/multi-model
+    predictions. Deliberately not run on every cron tick — a full day's
+    FITS file is a few MB and takes real time to download+parse, too heavy
+    to do on every prediction request, so this refreshes periodically
+    instead and the cached feature carries its own "as_of" timestamp so
+    staleness is visible rather than hidden."""
+
+    def work() -> str:
+        from services.fits_parser import extract_light_curve_from_zip
+        from services.pradan_scraper import PRADANScraper
+
+        scraper = PRADANScraper()
+        if not scraper.authenticated:
+            return f"not authenticated: {scraper.auth_error}"
+
+        files = scraper.get_latest_solexs_data()
+        if not files:
+            return "no SoLEXS files listed"
+
+        latest = files[0]
+        resp = scraper.session.get(latest["url"], timeout=60)
+        resp.raise_for_status()
+        points = extract_light_curve_from_zip(resp.content)
+        if len(points) < 10:
+            return f"file {latest['filename']} had too few real points ({len(points)})"
+
+        # Same feature definition as training: current level + ~30min trend
+        # (6 points at 5-min resample, but here we use the raw ~1Hz tail).
+        recent = points[-1800:]  # last ~30 min at 1Hz
+        counts_now = sum(p["counts"] for p in points[-60:]) / len(points[-60:])
+        counts_30min_ago = sum(p["counts"] for p in recent[:60]) / len(recent[:60])
+        trend = (counts_now - counts_30min_ago) / counts_30min_ago if counts_30min_ago > 0 else 0.0
+
+        job_store.save(
+            "adityal1_live_features",
+            {
+                "adityal1_counts": round(counts_now, 2),
+                "adityal1_trend": round(max(-5.0, min(5.0, trend)), 4),
+                "as_of": points[-1]["timestamp"],
+                "source_file": latest["filename"],
+            },
+        )
+        return f"{latest['filename']}: counts={counts_now:.1f} trend={trend:.3f}"
+
+    _run("fetch_adityal1_features", work)
+
+
 def _run(job_name: str, fn: Callable[[], str]) -> None:
     start = time.perf_counter()
     try:

@@ -21,6 +21,7 @@ import type {
   SolarWindSummary,
   StormWatches,
   SystemStatus,
+  TrainedModelResponse,
 } from '../types';
 
 const REFRESH_MS = 60_000;
@@ -63,6 +64,7 @@ export const api = {
   getStormWatches: () => fetchJson<StormWatches>('/api/v1/space-weather/storm-watches'),
   getPredictionAccuracy: () => fetchJson<AllPredictionAccuracy>('/api/v1/predictions/accuracy'),
   getFlareAlerts: () => fetchJson<FlareAlertsResponse>('/api/v1/flare-alerts'),
+  getTrainedModelPredictions: () => fetchJson<TrainedModelResponse>('/api/v1/predictions/trained-model'),
 };
 
 export const FLARE_ALERTS_REFRESH_MS = 5 * 60_000;

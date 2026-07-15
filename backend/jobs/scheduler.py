@@ -25,6 +25,7 @@ from apscheduler.triggers.cron import CronTrigger
 from jobs.data_jobs import (
     job_backfill_pradan_history,
     job_check_pradan,
+    job_fetch_adityal1_features,
     job_fetch_alerts,
     job_fetch_cme,
     job_fetch_cme_indicators,
@@ -79,6 +80,11 @@ def create_scheduler() -> BackgroundScheduler:
 
     # PRADAN login check — low frequency, it's a real government auth server
     scheduler.add_job(job_check_pradan, CronTrigger(hour="*/6"), id="check_pradan", replace_existing=True)
+
+    # Real-time feature refresh for the trained ML model's dual/multi
+    # variants — downloads + parses one real light-curve file, so hourly
+    # (not more often) to keep the load reasonable.
+    scheduler.add_job(job_fetch_adityal1_features, CronTrigger(minute="20"), id="fetch_adityal1_features", replace_existing=True)
 
     # Full-mission history backfill — once daily, deliberately NOT run on
     # startup (see job_backfill_pradan_history docstring)

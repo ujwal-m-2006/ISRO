@@ -144,10 +144,10 @@ function Predictions() {
       <Panel title="Which model is actually predicting best?">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {([
-            { key: 'single_model_flare' as const, name: 'single_model' as const, label: 'Single Model', desc: 'NOAA official forecast alone (1 signal)' },
-            { key: 'dual_model_flare' as const, name: 'dual_model' as const, label: 'Dual Model', desc: 'NOAA + live flux-trend, equally weighted (2 signals)' },
-            { key: 'ensemble_flare' as const, name: 'multi_model' as const, label: 'Multi Model', desc: 'All 3 signals, adaptively weighted (3 signals)' },
-          ]).map(({ key, name, label, desc }) => {
+            { key: 'single_model_flare' as const, name: 'single_model' as const, label: 'Single Model', desc: 'NOAA official forecast alone (1 signal)', predicted: nearestHorizon?.single_model },
+            { key: 'dual_model_flare' as const, name: 'dual_model' as const, label: 'Dual Model', desc: 'NOAA + live flux-trend, equally weighted (2 signals)', predicted: nearestHorizon?.dual_model },
+            { key: 'ensemble_flare' as const, name: 'multi_model' as const, label: 'Multi Model', desc: 'All 3 signals, adaptively weighted (3 signals)', predicted: nearestHorizon ? { flare_class: nearestHorizon.flare_class, probability: nearestHorizon.probability, ...nearestHorizon.combined } : undefined },
+          ]).map(({ key, name, label, desc, predicted }) => {
             const c = accuracy.data?.[key];
             const isBest = accuracy.data?.best_flare_model.model === name;
             return (
@@ -161,7 +161,17 @@ function Predictions() {
                   </span>
                 )}
                 <p className="text-sm text-space-gray mt-1">{label}</p>
-                <p className="text-3xl font-bold mt-1">{c?.accuracy_pct != null ? `${c.accuracy_pct}%` : '—'}</p>
+
+                <div className="flex items-center gap-2 mt-2">
+                  {predicted ? <FlareClassBadge flareClass={predicted.flare_class} /> : <span className="text-space-gray text-sm">—</span>}
+                  <span className="text-xs text-space-gray">predicted for {nearestHorizon?.time_horizon ?? '—'} ahead</span>
+                </div>
+                {predicted && (
+                  <p className="text-xs text-space-gray mt-1">C {predicted.c}% · M {predicted.m}% · X {predicted.x}%</p>
+                )}
+
+                <p className="text-3xl font-bold mt-3">{c?.accuracy_pct != null ? `${c.accuracy_pct}%` : '—'}</p>
+                <p className="text-xs text-space-gray">accuracy so far</p>
                 <p className="text-xs text-space-gray mt-2">{desc}</p>
                 <p className="text-xs text-space-gray mt-2 pt-2 border-t border-space-blue/10">
                   {c ? `${c.correct} correct / ${c.total_verified} verified · ${c.total_pending} awaiting window` : 'No predictions recorded yet'}

@@ -428,6 +428,34 @@ export interface AllPredictionAccuracy {
   best_flare_model: BestFlareModel;
 }
 
+export interface TrainedModelVariant {
+  datasets: string[];
+  test_accuracy: number | null;
+  test_precision: number | null;
+  test_recall: number | null;
+  train_samples: number;
+  test_samples: number;
+  prediction_available: boolean;
+  probability_pct?: number;
+  predicted_positive?: boolean;
+  adityal1_feature_as_of?: string;
+  reason?: string;
+}
+
+export interface TrainedModelResponse {
+  available: boolean;
+  message?: string;
+  trained_at?: string;
+  training_window?: {
+    noaa_start: string;
+    noaa_end: string;
+    adityal1_points: number;
+    adityal1_available: boolean;
+  };
+  target?: string;
+  variants: Record<'single_model' | 'dual_model' | 'multi_model', TrainedModelVariant>;
+}
+
 export interface FlareAlert {
   id: string;
   flare_class: string;

@@ -234,6 +234,14 @@ class SatelliteRosterResponse(BaseModel):
     disclosure: str
 
 
+class ModelVariantScore(BaseModel):
+    flare_class: str
+    probability: float
+    c: float
+    m: float
+    x: float
+
+
 class EnsemblePrediction(BaseModel):
     id: int
     time_horizon: str
@@ -242,6 +250,8 @@ class EnsemblePrediction(BaseModel):
     flare_class: str
     probability: float
     combined: Dict[str, float]
+    single_model: ModelVariantScore
+    dual_model: ModelVariantScore
     models: Dict[str, Dict[str, float]]
     weights: Dict[str, float]
 
@@ -250,4 +260,5 @@ class EnsembleForecastResponse(BaseModel):
     predictions: List[EnsemblePrediction]
     last_updated: str
     data_source: str
+    adaptive_weights_active: bool
     methodology: str

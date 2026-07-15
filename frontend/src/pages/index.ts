@@ -14,3 +14,4 @@ export { default as EarthImpact } from './EarthImpact';
 export { default as Satellites } from './Satellites';
 export { default as Predictions } from './Predictions';
 export { default as HistoricalArchive } from './HistoricalArchive';
+export { default as TrainedModel } from './TrainedModel';

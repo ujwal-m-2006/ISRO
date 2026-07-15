@@ -1,223 +1,89 @@
-import astropy.io.fits as fits
-import numpy as np
-from datetime import datetime
-import pytz
-from typing import Dict, Any, Optional
-import logging
+"""
+Parses real Aditya-L1 SoLEXS light-curve FITS files from PRADAN.
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+Verified against an actual downloaded file
+(AL1_SLX_L1_20260712_v1.0/SDD2/AL1_SOLEXS_20260712_SDD2_L1.lc): each daily
+archive is a zip containing per-detector (SDD1/SDD2) gzipped FITS files —
+.lc (light curve: the count-rate-vs-time data used here), .pi (spectrum),
+.gti (good time intervals). The light curve's HDU1 ("RATE") is a binary
+table with exactly two columns:
+    TIME   - Unix epoch seconds (confirmed via MJDREFI=40587, the Unix
+             epoch in Modified Julian Date, and cross-checked against the
+             file's own DATE-OBS header)
+    COUNTS - raw photon counts in that time bin (NaN for gaps)
+1-second cadence, ~86400 rows per day. SDD1 is not always present (real
+instrument data gaps) — SDD2 is used as the primary channel.
+
+The previous version of this file computed a blind mean/sum over whatever
+array happened to be in the primary HDU, which does not match this file's
+real structure (a binary table in HDU1, not primary-HDU image data) — it
+was never actually tested against a real file.
+"""
+
+from __future__ import annotations
+
+import gzip
+import io
+import logging
+import zipfile
+from datetime import datetime, timezone
+from typing import Any, Dict, List
+
+import numpy as np
+from astropy.io import fits
+
 logger = logging.getLogger(__name__)
 
-class FITSParser:
-    def __init__(self):
-        pass
-    
-    def parse_solexs_fits(self, file_path: str) -> Optional[Dict[str, Any]]:
-        """
-        Parse SoLEXS FITS file and extract relevant solar flare data
-        """
-        try:
-            # Open FITS file
-            hdul = fits.open(file_path)
-            
-            # Extract header information
-            header = hdul[0].header if len(hdul) > 0 else {}
-            
-            # Extract data
-            data = hdul[0].data if len(hdul) > 0 and hdul[0].data is not None else None
-            
-            # Parse SoLEXS specific data
-            result = {
-                "timestamp": self._extract_timestamp(header),
-                "soft_xray_flux": self._extract_soft_xray_flux(data, header),
-                "energy_spectrum": self._extract_energy_spectrum(data, header),
-                "photon_count": self._extract_photon_count(data, header),
-                "temperature": self._extract_temperature(header),
-                "observation_time": self._extract_observation_time(header),
-                "detector_health": self._extract_detector_health(header),
-                "quality_flag": self._extract_quality_flag(header),
-                "instrument_status": self._extract_instrument_status(header),
-                "source": "PRADAN",
-                "file_path": file_path
-            }
-            
-            hdul.close()
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error parsing SoLEXS FITS file {file_path}: {e}")
-            return None
-    
-    def parse_hel1os_fits(self, file_path: str) -> Optional[Dict[str, Any]]:
-        """
-        Parse HEL1OS FITS file and extract relevant solar flare data
-        """
-        try:
-            # Open FITS file
-            hdul = fits.open(file_path)
-            
-            # Extract header information
-            header = hdul[0].header if len(hdul) > 0 else {}
-            
-            # Extract data
-            data = hdul[0].data if len(hdul) > 0 and hdul[0].data is not None else None
-            
-            # Parse HEL1OS specific data
-            result = {
-                "timestamp": self._extract_timestamp(header),
-                "hard_xray_flux": self._extract_hard_xray_flux(data, header),
-                "energy_distribution": self._extract_energy_distribution(data, header),
-                "detector_count": self._extract_detector_count(data, header),
-                "peak_energy": self._extract_peak_energy(header),
-                "observation_time": self._extract_observation_time(header),
-                "detector_health": self._extract_detector_health(header),
-                "quality_flag": self._extract_quality_flag(header),
-                "instrument_status": self._extract_instrument_status(header),
-                "source": "PRADAN",
-                "file_path": file_path
-            }
-            
-            hdul.close()
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error parsing HEL1OS FITS file {file_path}: {e}")
-            return None
-    
-    def _extract_timestamp(self, header) -> datetime:
-        """
-        Extract timestamp from FITS header
-        """
-        # Try common FITS timestamp keywords
-        for keyword in ['DATE-OBS', 'DATE', 'TIME-OBS', 'UTSTART']:
-            if keyword in header:
-                try:
-                    # Handle different timestamp formats
-                    timestamp_str = str(header[keyword])
-                    # Remove any trailing spaces or comments
-                    timestamp_str = timestamp_str.split()[0]
-                    # Try to parse as ISO format
-                    return datetime.fromisoformat(timestamp_str.replace('T', ' ').replace('/', '-'))
-                except ValueError:
-                    pass
-        
-        # Default to current time if no timestamp found
-        return datetime.now(pytz.UTC)
-    
-    def _extract_soft_xray_flux(self, data, header) -> Optional[float]:
-        """
-        Extract soft X-ray flux from SoLEXS data
-        """
-        # SoLEXS measures in 2-22 keV range
-        if data is not None:
-            # Simple example - actual implementation would depend on FITS structure
-            return float(np.mean(data)) if data.size > 0 else None
-        return None
-    
-    def _extract_hard_xray_flux(self, data, header) -> Optional[float]:
-        """
-        Extract hard X-ray flux from HEL1OS data
-        """
-        # HEL1OS measures in 10-150 keV range
-        if data is not None:
-            # Simple example - actual implementation would depend on FITS structure
-            return float(np.mean(data)) if data.size > 0 else None
-        return None
-    
-    def _extract_energy_spectrum(self, data, header) -> Optional[list]:
-        """
-        Extract energy spectrum from SoLEXS data
-        """
-        if data is not None:
-            # Convert to list for JSON serialization
-            return data.tolist() if hasattr(data, 'tolist') else [float(x) for x in data.flatten()[:100]]
-        return None
-    
-    def _extract_energy_distribution(self, data, header) -> Optional[list]:
-        """
-        Extract energy distribution from HEL1OS data
-        """
-        if data is not None:
-            # Convert to list for JSON serialization
-            return data.tolist() if hasattr(data, 'tolist') else [float(x) for x in data.flatten()[:100]]
-        return None
-    
-    def _extract_photon_count(self, data, header) -> Optional[int]:
-        """
-        Extract photon count from SoLEXS data
-        """
-        if data is not None:
-            return int(np.sum(data)) if data.size > 0 else 0
-        return 0
-    
-    def _extract_detector_count(self, data, header) -> Optional[int]:
-        """
-        Extract detector count from HEL1OS data
-        """
-        if data is not None:
-            return int(np.sum(data)) if data.size > 0 else 0
-        return 0
-    
-    def _extract_temperature(self, header) -> Optional[float]:
-        """
-        Extract temperature from SoLEXS header
-        """
-        # Look for temperature keywords
-        for keyword in ['TEMPERAT', 'TEMP', 'TEFF']:
-            if keyword in header:
-                return float(header[keyword])
-        return None
-    
-    def _extract_peak_energy(self, header) -> Optional[float]:
-        """
-        Extract peak energy from HEL1OS header
-        """
-        # Look for peak energy keywords
-        for keyword in ['PEAK_ENE', 'PEAK', 'ENERGY_PEAK']:
-            if keyword in header:
-                return float(header[keyword])
-        return None
-    
-    def _extract_observation_time(self, header) -> Optional[datetime]:
-        """
-        Extract observation time from header
-        """
-        return self._extract_timestamp(header)
-    
-    def _extract_detector_health(self, header) -> Optional[str]:
-        """
-        Extract detector health status from header
-        """
-        # Look for health keywords
-        for keyword in ['HEALTH', 'STATUS', 'QUALITY']:
-            if keyword in header:
-                return str(header[keyword])
-        return "unknown"
-    
-    def _extract_quality_flag(self, header) -> Optional[str]:
-        """
-        Extract quality flag from header
-        """
-        # Look for quality keywords
-        for keyword in ['QUALITY', 'FLAG', 'QUAL']:
-            if keyword in header:
-                return str(header[keyword]).lower()
-        return "good"
-    
-    def _extract_instrument_status(self, header) -> Optional[str]:
-        """
-        Extract instrument status from header
-        """
-        # Look for status keywords
-        for keyword in ['STATUS', 'INSTRUME', 'INSTRUMENT']:
-            if keyword in header:
-                return str(header[keyword])
-        return "operational"
 
-# Example usage
-if __name__ == "__main__":
-    parser = FITSParser()
-    # This would be called with actual FITS file paths
-    # result = parser.parse_solexs_fits("/path/to/solexs_file.fits")
-    # print(result)
+def _open_fits_bytes(raw: bytes) -> fits.HDUList:
+    """PRADAN serves these gzipped — transparently handle both gzipped and
+    plain FITS bytes."""
+    if raw[:2] == b"\x1f\x8b":
+        raw = gzip.decompress(raw)
+    return fits.open(io.BytesIO(raw))
+
+
+def parse_light_curve(raw: bytes) -> List[Dict[str, Any]]:
+    """Parses a SoLEXS/HEL1OS .lc(.gz) file's RATE table into a list of
+    {timestamp, counts} points, skipping NaN gaps."""
+    with _open_fits_bytes(raw) as hdul:
+        table = hdul["RATE"].data
+        times = table["TIME"]
+        counts = table["COUNTS"]
+
+    points = []
+    for t, c in zip(times, counts):
+        if np.isnan(c):
+            continue
+        points.append(
+            {
+                "timestamp": datetime.fromtimestamp(float(t), tz=timezone.utc).isoformat(),
+                "counts": float(c),
+            }
+        )
+    return points
+
+
+def extract_light_curve_from_zip(zip_bytes: bytes, prefer_detector: str = "SDD2") -> List[Dict[str, Any]]:
+    """A daily PRADAN archive is a zip of per-detector subfolders, each with
+    a gzipped .lc file. Real instrument data gaps mean a given detector
+    isn't always present for a given day (confirmed: SDD1 was entirely
+    absent from one real archive checked) — falls back to whichever
+    detector's .lc file is actually present rather than assuming both are."""
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+        lc_names = [n for n in z.namelist() if n.endswith(".lc.gz") or n.endswith(".lc")]
+        if not lc_names:
+            return []
+        chosen = next((n for n in lc_names if prefer_detector in n), lc_names[0])
+        raw = z.read(chosen)
+    return parse_light_curve(raw)
+
+
+class FITSParser:
+    """Thin class wrapper kept for import-site compatibility."""
+
+    def parse_solexs_zip(self, zip_bytes: bytes) -> List[Dict[str, Any]]:
+        return extract_light_curve_from_zip(zip_bytes, prefer_detector="SDD2")
+
+    def parse_hel1os_zip(self, zip_bytes: bytes) -> List[Dict[str, Any]]:
+        return extract_light_curve_from_zip(zip_bytes, prefer_detector="SDD2")

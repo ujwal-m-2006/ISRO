@@ -227,6 +227,17 @@ def get_prediction_accuracy():
     return get_all_accuracy()
 
 
+@router.get("/predictions/trained-model")
+def get_trained_model_predictions():
+    """Real scikit-learn classifiers fit on historical NOAA + Aditya-L1 data
+    with a held-out temporal test split — distinct from the hand-weighted
+    statistical ensemble in /forecast/ensemble. See
+    services/trained_model_service.py and ml_models/train_flare_model.py."""
+    from services.trained_model_service import get_trained_predictions
+
+    return get_trained_predictions()
+
+
 @router.post("/predictions/verify/trigger")
 def trigger_prediction_verification(background_tasks: BackgroundTasks):
     from services.prediction_verification import record_all, verify_all

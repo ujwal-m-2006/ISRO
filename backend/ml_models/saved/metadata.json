@@ -1,0 +1,65 @@
+{
+  "trained_at": "2026-07-15T07:02:54.936638+00:00",
+  "training_window": {
+    "noaa_start": "2026-07-08 06:42:00+00:00",
+    "noaa_end": "2026-07-15 06:39:00+00:00",
+    "adityal1_points": 860248,
+    "adityal1_available": true
+  },
+  "target": "C-class-or-above GOES longwave flux within 6h",
+  "variants": {
+    "single_model": {
+      "datasets": [
+        "NOAA GOES-18 X-ray Flux"
+      ],
+      "features": [
+        "noaa_flux",
+        "noaa_flux_trend"
+      ],
+      "test_accuracy": 0.547,
+      "test_precision": 0.3925,
+      "test_recall": 0.2625,
+      "train_samples": 1612,
+      "test_samples": 404,
+      "positive_rate_train": 0.6266,
+      "positive_rate_test": 0.396
+    },
+    "dual_model": {
+      "datasets": [
+        "NOAA GOES-18 X-ray Flux",
+        "Aditya-L1 SoLEXS (SDD2)"
+      ],
+      "features": [
+        "noaa_flux",
+        "noaa_flux_trend",
+        "adityal1_counts",
+        "adityal1_trend"
+      ],
+      "test_accuracy": 0.6374,
+      "test_precision": 0.9218,
+      "test_recall": 0.66,
+      "train_samples": 1090,
+      "test_samples": 273,
+      "positive_rate_train": 0.6165,
+      "positive_rate_test": 0.9158
+    },
+    "multi_model": {
+      "datasets": [
+        "NOAA GOES-18 X-ray Flux",
+        "Aditya-L1 SoLEXS (SDD2)",
+        "Voting ensemble of single+dual models"
+      ],
+      "features": [
+        "noaa_flux",
+        "noaa_flux_trend",
+        "adityal1_counts",
+        "adityal1_trend"
+      ],
+      "test_accuracy": 0.6374,
+      "test_precision": 0.9218,
+      "test_recall": 0.66,
+      "train_samples": 1090,
+      "test_samples": 273
+    }
+  }
+}

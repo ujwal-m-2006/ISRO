@@ -22,6 +22,7 @@ import {
   Satellites,
   HistoricalArchive,
   Predictions,
+  TrainedModel,
 } from './pages';
 
 const queryClient = new QueryClient({
@@ -56,6 +57,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="satellites" element={<Satellites />} />
             <Route path="archive" element={<HistoricalArchive />} />
             <Route path="predictions" element={<Predictions />} />
+            <Route path="trained-model" element={<TrainedModel />} />
           </Route>
         </Routes>
       </BrowserRouter>
