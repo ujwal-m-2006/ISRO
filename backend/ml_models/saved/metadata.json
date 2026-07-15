@@ -1,33 +1,37 @@
 {
-  "trained_at": "2026-07-15T07:02:54.936638+00:00",
+  "trained_at": "2026-07-15T11:17:40.575215+00:00",
   "training_window": {
-    "noaa_start": "2026-07-08 06:42:00+00:00",
-    "noaa_end": "2026-07-15 06:39:00+00:00",
-    "adityal1_points": 860248,
-    "adityal1_available": true
+    "span_start": "2024-02-01T00:00:00+00:00",
+    "span_end": "2026-07-15T11:05:20.422760+00:00",
+    "sample_every_days": 7,
+    "noaa_days_fetched": 128,
+    "noaa_points": 181557,
+    "adityal1_points": 8624142,
+    "adityal1_available": true,
+    "sampling_note": "Real data spanning 895 days (2 years), sampled 1 real day per 7 days rather than every continuous day (downloading/parsing every single day from both sources was impractical in one run and risked PRADAN rate-limiting) \u2014 a genuinely multi-year real dataset, disclosed as sampled rather than continuous."
   },
   "target": "C-class-or-above GOES longwave flux within 6h",
   "variants": {
     "single_model": {
       "datasets": [
-        "NOAA GOES-18 X-ray Flux"
+        "NOAA GOES-18 X-ray Flux (multi-year NCEI archive)"
       ],
       "features": [
         "noaa_flux",
         "noaa_flux_trend"
       ],
-      "test_accuracy": 0.547,
-      "test_precision": 0.3925,
-      "test_recall": 0.2625,
-      "train_samples": 1612,
-      "test_samples": 404,
-      "positive_rate_train": 0.6266,
-      "positive_rate_test": 0.396
+      "test_accuracy": 0.3716,
+      "test_precision": 0.8009,
+      "test_recall": 0.2702,
+      "train_samples": 29684,
+      "test_samples": 7422,
+      "positive_rate_train": 0.9342,
+      "positive_rate_test": 0.7885
     },
     "dual_model": {
       "datasets": [
-        "NOAA GOES-18 X-ray Flux",
-        "Aditya-L1 SoLEXS (SDD2)"
+        "NOAA GOES-18 X-ray Flux (multi-year NCEI archive)",
+        "Aditya-L1 SoLEXS (SDD2, multi-year PRADAN archive)"
       ],
       "features": [
         "noaa_flux",
@@ -35,18 +39,18 @@
         "adityal1_counts",
         "adityal1_trend"
       ],
-      "test_accuracy": 0.6374,
-      "test_precision": 0.9218,
-      "test_recall": 0.66,
-      "train_samples": 1090,
-      "test_samples": 273,
-      "positive_rate_train": 0.6165,
-      "positive_rate_test": 0.9158
+      "test_accuracy": 0.3565,
+      "test_precision": 0.8012,
+      "test_recall": 0.2207,
+      "train_samples": 24335,
+      "test_samples": 6084,
+      "positive_rate_train": 0.9455,
+      "positive_rate_test": 0.7715
     },
     "multi_model": {
       "datasets": [
-        "NOAA GOES-18 X-ray Flux",
-        "Aditya-L1 SoLEXS (SDD2)",
+        "NOAA GOES-18 X-ray Flux (multi-year NCEI archive)",
+        "Aditya-L1 SoLEXS (SDD2, multi-year PRADAN archive)",
         "Voting ensemble of single+dual models"
       ],
       "features": [
@@ -55,11 +59,633 @@
         "adityal1_counts",
         "adityal1_trend"
       ],
-      "test_accuracy": 0.6374,
-      "test_precision": 0.9218,
-      "test_recall": 0.66,
-      "train_samples": 1090,
-      "test_samples": 273
+      "test_accuracy": 0.3565,
+      "test_precision": 0.8012,
+      "test_recall": 0.2207,
+      "train_samples": 24335,
+      "test_samples": 6084
     }
-  }
+  },
+  "daily_series": [
+    {
+      "date": "2024-02-01",
+      "noaa_flux": 1.0111425346837282e-06,
+      "adityal1_counts": 20.20838445334383
+    },
+    {
+      "date": "2024-02-08",
+      "noaa_flux": 4.2671205073251016e-06,
+      "adityal1_counts": 204.8986283928468
+    },
+    {
+      "date": "2024-02-15",
+      "noaa_flux": 2.6455835897504837e-06,
+      "adityal1_counts": 91.32603893234919
+    },
+    {
+      "date": "2024-02-22",
+      "noaa_flux": 1.4295774766653353e-05,
+      "adityal1_counts": 734.5441953128684
+    },
+    {
+      "date": "2024-02-29",
+      "noaa_flux": 1.7792115662972216e-06,
+      "adityal1_counts": 48.33656650770869
+    },
+    {
+      "date": "2024-03-07",
+      "noaa_flux": 1.1198290823047052e-06,
+      "adityal1_counts": 30.437241032938516
+    },
+    {
+      "date": "2024-03-14",
+      "noaa_flux": 1.2571700317108733e-06,
+      "adityal1_counts": 33.54299967591092
+    },
+    {
+      "date": "2024-03-21",
+      "noaa_flux": 2.1209939798816092e-06,
+      "adityal1_counts": 59.31808090486317
+    },
+    {
+      "date": "2024-03-28",
+      "noaa_flux": 4.447243556299231e-06
+    },
+    {
+      "date": "2024-04-04",
+      "noaa_flux": 3.87242432482787e-07,
+      "adityal1_counts": 3.774266731485983
+    },
+    {
+      "date": "2024-04-11",
+      "noaa_flux": 2.334518439454462e-06,
+      "adityal1_counts": 82.44130004514045
+    },
+    {
+      "date": "2024-04-18",
+      "noaa_flux": 5.117882298261773e-06,
+      "adityal1_counts": 199.38908758405964
+    },
+    {
+      "date": "2024-04-25",
+      "noaa_flux": 3.4683641870692893e-06,
+      "adityal1_counts": 69.51080968473681
+    },
+    {
+      "date": "2024-05-02",
+      "noaa_flux": 1.8545300148421816e-06,
+      "adityal1_counts": 47.22076899928239
+    },
+    {
+      "date": "2024-05-09",
+      "noaa_flux": 2.1336812248061827e-05,
+      "adityal1_counts": 1216.1788351582213
+    },
+    {
+      "date": "2024-05-16",
+      "noaa_flux": 2.6501270913254554e-06,
+      "adityal1_counts": 68.30181503607221
+    },
+    {
+      "date": "2024-05-23",
+      "noaa_flux": 5.356695863991158e-06,
+      "adityal1_counts": 226.93064413449852
+    },
+    {
+      "date": "2024-05-30",
+      "noaa_flux": 2.5515203221162767e-06,
+      "adityal1_counts": 63.19626838894869
+    },
+    {
+      "date": "2024-06-06",
+      "noaa_flux": 5.0550794984221486e-06
+    },
+    {
+      "date": "2024-06-13",
+      "noaa_flux": 2.694412961940568e-06
+    },
+    {
+      "date": "2024-06-20",
+      "noaa_flux": 3.6135319599376695e-06
+    },
+    {
+      "date": "2024-06-27",
+      "noaa_flux": 1.657601732003084e-06
+    },
+    {
+      "date": "2024-07-04",
+      "noaa_flux": 2.408708774008043e-06,
+      "adityal1_counts": 60.49785298440954
+    },
+    {
+      "date": "2024-07-11",
+      "noaa_flux": 3.0943914427755066e-06,
+      "adityal1_counts": 89.01878493964051
+    },
+    {
+      "date": "2024-07-18",
+      "noaa_flux": 3.5922622542569923e-06,
+      "adityal1_counts": 111.05942267182111
+    },
+    {
+      "date": "2024-07-25",
+      "noaa_flux": 1.924175252791353e-06,
+      "adityal1_counts": 46.64870659681981
+    },
+    {
+      "date": "2024-08-01",
+      "noaa_flux": 1.2346877987094255e-05,
+      "adityal1_counts": 637.361022697022
+    },
+    {
+      "date": "2024-08-08",
+      "noaa_flux": 9.29765761499644e-06,
+      "adityal1_counts": 418.43248842592595
+    },
+    {
+      "date": "2024-08-15",
+      "noaa_flux": 3.8088973432258574e-06,
+      "adityal1_counts": 98.16828130606388
+    },
+    {
+      "date": "2024-08-22",
+      "noaa_flux": 3.6105241681146556e-06,
+      "adityal1_counts": 102.04781360679645
+    },
+    {
+      "date": "2024-08-29",
+      "noaa_flux": 2.9145427035359718e-06
+    },
+    {
+      "date": "2024-09-05",
+      "noaa_flux": 4.316695812252765e-06,
+      "adityal1_counts": 146.106714198081
+    },
+    {
+      "date": "2024-09-12",
+      "noaa_flux": 9.715734532257707e-06,
+      "adityal1_counts": 482.0643499735403
+    },
+    {
+      "date": "2024-09-19",
+      "noaa_flux": 1.2354183083546694e-06,
+      "adityal1_counts": 20.30751869256233
+    },
+    {
+      "date": "2024-09-26",
+      "noaa_flux": 2.5908357960098443e-06,
+      "adityal1_counts": 64.65212157688835
+    },
+    {
+      "date": "2024-10-03",
+      "noaa_flux": 1.683734825973816e-05,
+      "adityal1_counts": 715.0710222994497
+    },
+    {
+      "date": "2024-10-10",
+      "noaa_flux": 5.668885915539151e-06,
+      "adityal1_counts": 219.0288888888889
+    },
+    {
+      "date": "2024-10-17",
+      "noaa_flux": 2.2547950893662497e-06,
+      "adityal1_counts": 59.190823967869996
+    },
+    {
+      "date": "2024-10-24",
+      "noaa_flux": 1.7279663441469336e-05,
+      "adityal1_counts": 236.5882779368589
+    },
+    {
+      "date": "2024-10-31",
+      "noaa_flux": 9.8377991581818e-06,
+      "adityal1_counts": 491.6676736460757
+    },
+    {
+      "date": "2024-11-07",
+      "noaa_flux": 5.5945456528098105e-06,
+      "adityal1_counts": 208.87023148148148
+    },
+    {
+      "date": "2024-11-14",
+      "noaa_flux": 1.2687552023906947e-06,
+      "adityal1_counts": 20.744683325901946
+    },
+    {
+      "date": "2024-11-21",
+      "noaa_flux": 2.8669119111152428e-06,
+      "adityal1_counts": 69.03265084086621
+    },
+    {
+      "date": "2024-11-28",
+      "noaa_flux": 2.442783128170984e-06,
+      "adityal1_counts": 63.42037718723211
+    },
+    {
+      "date": "2024-12-05",
+      "noaa_flux": 2.3952536511856055e-06,
+      "adityal1_counts": 44.006062443164595
+    },
+    {
+      "date": "2024-12-12",
+      "noaa_flux": 1.497370988643196e-06,
+      "adityal1_counts": 33.97488396856445
+    },
+    {
+      "date": "2024-12-19",
+      "noaa_flux": 3.32946060908057e-06,
+      "adityal1_counts": 106.53148763295872
+    },
+    {
+      "date": "2024-12-26",
+      "noaa_flux": 5.050726828415009e-06
+    },
+    {
+      "date": "2025-01-02",
+      "noaa_flux": 3.6209398141788067e-06,
+      "adityal1_counts": 95.25153935185185
+    },
+    {
+      "date": "2025-01-09",
+      "noaa_flux": 1.4994801010538418e-06,
+      "adityal1_counts": 28.879210166902013
+    },
+    {
+      "date": "2025-01-16",
+      "noaa_flux": 2.682959201176042e-06,
+      "adityal1_counts": 66.93422377573815
+    },
+    {
+      "date": "2025-01-23",
+      "noaa_flux": 2.6972376832961547e-06,
+      "adityal1_counts": 72.95450178821514
+    },
+    {
+      "date": "2025-01-30",
+      "noaa_flux": 2.2192722399931125e-06
+    },
+    {
+      "date": "2025-02-06",
+      "noaa_flux": 3.6640353073380537e-06
+    },
+    {
+      "date": "2025-02-13",
+      "noaa_flux": 1.662811604872003e-06,
+      "adityal1_counts": 42.649417238625446
+    },
+    {
+      "date": "2025-02-20",
+      "noaa_flux": 1.6472011702085688e-06,
+      "adityal1_counts": 33.82485967435172
+    },
+    {
+      "date": "2025-02-27",
+      "noaa_flux": 2.309972221234549e-06,
+      "adityal1_counts": 57.05840480572242
+    },
+    {
+      "date": "2025-03-06",
+      "noaa_flux": 9.167672546898314e-07,
+      "adityal1_counts": 11.42340767832961
+    },
+    {
+      "date": "2025-03-13",
+      "noaa_flux": 1.8629352153489955e-06,
+      "adityal1_counts": 43.91755787037037
+    },
+    {
+      "date": "2025-03-20",
+      "noaa_flux": 1.8754696341124106e-06,
+      "adityal1_counts": 45.705528999178235
+    },
+    {
+      "date": "2025-03-27",
+      "noaa_flux": 2.036603654704167e-06,
+      "adityal1_counts": 61.73854718859233
+    },
+    {
+      "date": "2025-04-03",
+      "noaa_flux": 1.4657447269257607e-06,
+      "adityal1_counts": 27.270475484976156
+    },
+    {
+      "date": "2025-04-10",
+      "noaa_flux": 1.4724074160817583e-06,
+      "adityal1_counts": 27.86828398805528
+    },
+    {
+      "date": "2025-04-17",
+      "noaa_flux": 1.195641258928188e-06,
+      "adityal1_counts": 14.699405514798887
+    },
+    {
+      "date": "2025-04-24",
+      "noaa_flux": 1.3772383042010007e-06,
+      "adityal1_counts": 20.018935623509805
+    },
+    {
+      "date": "2025-05-01",
+      "noaa_flux": 8.591912562947199e-07
+    },
+    {
+      "date": "2025-05-08",
+      "noaa_flux": 1.7555162119847343e-06,
+      "adityal1_counts": 36.576223711471464
+    },
+    {
+      "date": "2025-05-15",
+      "noaa_flux": 9.207793937093811e-07
+    },
+    {
+      "date": "2025-05-22",
+      "noaa_flux": 6.817767658281089e-07,
+      "adityal1_counts": 7.62757103999074
+    },
+    {
+      "date": "2025-05-29",
+      "noaa_flux": 8.142630053479631e-07,
+      "adityal1_counts": 8.66625383413392
+    },
+    {
+      "date": "2025-06-05",
+      "noaa_flux": 1.3892755122490625e-06,
+      "adityal1_counts": 26.81578277274937
+    },
+    {
+      "date": "2025-06-12",
+      "noaa_flux": 1.4981597776476797e-06,
+      "adityal1_counts": 30.558694846983656
+    },
+    {
+      "date": "2025-06-19",
+      "noaa_flux": 2.6431635263908976e-06,
+      "adityal1_counts": 108.61612806148433
+    },
+    {
+      "date": "2025-06-26",
+      "noaa_flux": 6.606260024947611e-07,
+      "adityal1_counts": 7.292768183712209
+    },
+    {
+      "date": "2025-07-03",
+      "noaa_flux": 9.342075336130999e-07
+    },
+    {
+      "date": "2025-07-10",
+      "noaa_flux": 1.6379477366336283e-06,
+      "adityal1_counts": 33.63089726376221
+    },
+    {
+      "date": "2025-07-17",
+      "noaa_flux": 1.3008470949513493e-06
+    },
+    {
+      "date": "2025-07-24",
+      "noaa_flux": 1.6622096017234374e-06
+    },
+    {
+      "date": "2025-07-31",
+      "noaa_flux": 1.009914376955597e-06,
+      "adityal1_counts": 13.702354221162526
+    },
+    {
+      "date": "2025-08-07",
+      "noaa_flux": 3.917424867895805e-06,
+      "adityal1_counts": 89.44879187745427
+    },
+    {
+      "date": "2025-08-14",
+      "noaa_flux": 9.449377959016816e-07
+    },
+    {
+      "date": "2025-08-21",
+      "noaa_flux": 9.022659229332122e-07,
+      "adityal1_counts": 14.770171884947045
+    },
+    {
+      "date": "2025-08-28",
+      "noaa_flux": 3.8534549956479065e-06,
+      "adityal1_counts": 116.36419510162507
+    },
+    {
+      "date": "2025-09-04",
+      "noaa_flux": 1.8738799930605007e-06,
+      "adityal1_counts": 38.01044017732097
+    },
+    {
+      "date": "2025-09-11",
+      "noaa_flux": 8.524690627944216e-07,
+      "adityal1_counts": 17.037455004224682
+    },
+    {
+      "date": "2025-09-18",
+      "noaa_flux": 1.181155889684593e-06,
+      "adityal1_counts": 22.404863190633474
+    },
+    {
+      "date": "2025-09-25",
+      "noaa_flux": 1.7824315653795158e-06,
+      "adityal1_counts": 37.133422073036634
+    },
+    {
+      "date": "2025-10-02",
+      "noaa_flux": 1.720276143027234e-06,
+      "adityal1_counts": 35.352396495248676
+    },
+    {
+      "date": "2025-10-09",
+      "noaa_flux": 1.2484370984634696e-06,
+      "adityal1_counts": 38.30345961086612
+    },
+    {
+      "date": "2025-10-16",
+      "noaa_flux": 3.814990124623056e-06
+    },
+    {
+      "date": "2025-10-23",
+      "noaa_flux": 8.713294614813726e-07,
+      "adityal1_counts": 14.096891059771286
+    },
+    {
+      "date": "2025-10-30",
+      "noaa_flux": 5.380145739685026e-07
+    },
+    {
+      "date": "2025-11-06",
+      "noaa_flux": 2.014261140904854e-06,
+      "adityal1_counts": 50.51310809403104
+    },
+    {
+      "date": "2025-11-13",
+      "noaa_flux": 1.7657449262347628e-06,
+      "adityal1_counts": 38.028745726195496
+    },
+    {
+      "date": "2025-11-20",
+      "noaa_flux": 9.046967206198057e-07,
+      "adityal1_counts": 17.636156348021345
+    },
+    {
+      "date": "2025-11-27",
+      "noaa_flux": 1.0181284622884985e-06,
+      "adityal1_counts": 19.736130563111292
+    },
+    {
+      "date": "2025-12-04",
+      "noaa_flux": 3.4300019535749016e-06,
+      "adityal1_counts": 106.69927196546176
+    },
+    {
+      "date": "2025-12-11",
+      "noaa_flux": 1.3426588567079356e-06,
+      "adityal1_counts": 26.282383059564904
+    },
+    {
+      "date": "2025-12-18",
+      "noaa_flux": 6.363575909378798e-07,
+      "adityal1_counts": 6.494340585424688
+    },
+    {
+      "date": "2025-12-25",
+      "noaa_flux": 1.5952553151047748e-06,
+      "adityal1_counts": 26.99300909743281
+    },
+    {
+      "date": "2026-01-01",
+      "noaa_flux": 1.8139553278710234e-06,
+      "adityal1_counts": 38.18551700987371
+    },
+    {
+      "date": "2026-01-08",
+      "noaa_flux": 1.44979014050269e-06,
+      "adityal1_counts": 33.497494125953445
+    },
+    {
+      "date": "2026-01-15",
+      "noaa_flux": 1.5307739407906713e-06,
+      "adityal1_counts": 36.85549434014676
+    },
+    {
+      "date": "2026-01-22",
+      "noaa_flux": 1.8143294214370246e-06,
+      "adityal1_counts": 36.88963609426362
+    },
+    {
+      "date": "2026-01-29",
+      "noaa_flux": 7.307278356528791e-07,
+      "adityal1_counts": 9.133231488554035
+    },
+    {
+      "date": "2026-02-05",
+      "noaa_flux": 5.303827532458596e-06,
+      "adityal1_counts": 275.10159129532764
+    },
+    {
+      "date": "2026-02-12",
+      "noaa_flux": 9.093718177292468e-07,
+      "adityal1_counts": 26.116358508926975
+    },
+    {
+      "date": "2026-02-19",
+      "noaa_flux": 4.879546111169475e-07,
+      "adityal1_counts": 6.8422760311140705
+    },
+    {
+      "date": "2026-02-26",
+      "noaa_flux": 9.95085324178749e-07,
+      "adityal1_counts": 17.498367979999074
+    },
+    {
+      "date": "2026-03-05",
+      "noaa_flux": 7.166302452516544e-07,
+      "adityal1_counts": 9.047155506684415
+    },
+    {
+      "date": "2026-03-12",
+      "noaa_flux": 8.592760346663884e-07,
+      "adityal1_counts": 16.381779043122005
+    },
+    {
+      "date": "2026-03-19",
+      "noaa_flux": 3.42552262681251e-07,
+      "adityal1_counts": 3.7759884225759768
+    },
+    {
+      "date": "2026-03-26",
+      "noaa_flux": 1.8796386366935296e-06,
+      "adityal1_counts": 60.910646079770366
+    },
+    {
+      "date": "2026-04-02",
+      "noaa_flux": 1.9983255688840894e-06,
+      "adityal1_counts": 67.24374971063475
+    },
+    {
+      "date": "2026-04-09",
+      "noaa_flux": 5.866476772320968e-07,
+      "adityal1_counts": 7.244542895380498
+    },
+    {
+      "date": "2026-04-16",
+      "noaa_flux": 4.977357713345201e-07
+    },
+    {
+      "date": "2026-04-23",
+      "noaa_flux": 2.976979753870839e-06
+    },
+    {
+      "date": "2026-04-30",
+      "noaa_flux": 1.2099698093632267e-06,
+      "adityal1_counts": 17.174927079957406
+    },
+    {
+      "date": "2026-05-07",
+      "noaa_flux": 2.5192252615015883e-06,
+      "adityal1_counts": 93.0680587064216
+    },
+    {
+      "date": "2026-05-14",
+      "noaa_flux": 1.3282841063894719e-06,
+      "adityal1_counts": 31.553301078753645
+    },
+    {
+      "date": "2026-05-21",
+      "noaa_flux": 8.625666159408259e-07,
+      "adityal1_counts": 14.070361239394886
+    },
+    {
+      "date": "2026-05-28",
+      "noaa_flux": 8.947469750195422e-07,
+      "adityal1_counts": 9.057333981436475
+    },
+    {
+      "date": "2026-06-04",
+      "noaa_flux": 1.2709477220972253e-06
+    },
+    {
+      "date": "2026-06-11",
+      "noaa_flux": 1.2193216829103904e-06,
+      "adityal1_counts": 22.955530348627253
+    },
+    {
+      "date": "2026-06-18",
+      "noaa_flux": 4.980022506965535e-07,
+      "adityal1_counts": 6.201397712833545
+    },
+    {
+      "date": "2026-06-25",
+      "noaa_flux": 1.6468636804489734e-06,
+      "adityal1_counts": 34.900310192365566
+    },
+    {
+      "date": "2026-07-02",
+      "noaa_flux": 4.716513883333088e-06,
+      "adityal1_counts": 154.02172503993148
+    },
+    {
+      "date": "2026-07-09",
+      "noaa_flux": 6.500823782692085e-07,
+      "adityal1_counts": 9.433995022860119
+    }
+  ]
 }

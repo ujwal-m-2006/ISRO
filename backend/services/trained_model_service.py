@@ -32,18 +32,28 @@ SAVE_DIR = Path(__file__).resolve().parent.parent / "ml_models" / "saved"
 
 _models: Dict[str, Any] = {}
 _metadata: Optional[Dict[str, Any]] = None
-_loaded = False
+_metadata_mtime: Optional[float] = None
 
 
 def _load() -> None:
-    global _loaded, _metadata
-    if _loaded:
-        return
-    _loaded = True
+    """Re-reads metadata.json whenever its mtime changes, rather than a
+    one-shot load — a long-running server process (this dev session hit
+    this exact bug) would otherwise keep serving stale in-memory metadata
+    from before a retrain, even though the file on disk has moved on."""
+    global _metadata, _metadata_mtime
     meta_path = SAVE_DIR / "metadata.json"
     if not meta_path.exists():
+        if _metadata_mtime is not None:  # only warn once per missing-file state
+            return
         logger.warning("No trained model metadata found at %s — run `python -m ml_models.train_flare_model`", meta_path)
+        _metadata_mtime = -1
         return
+
+    current_mtime = meta_path.stat().st_mtime
+    if current_mtime == _metadata_mtime:
+        return
+    _metadata_mtime = current_mtime
+
     with open(meta_path, encoding="utf-8") as f:
         _metadata = json.load(f)
     for name in ("single_model", "dual_model", "multi_model"):
@@ -95,6 +105,7 @@ def get_trained_predictions() -> Dict[str, Any]:
         "trained_at": _metadata["trained_at"],
         "training_window": _metadata["training_window"],
         "target": _metadata["target"],
+        "daily_series": _metadata.get("daily_series", []),
         "variants": {},
     }
 

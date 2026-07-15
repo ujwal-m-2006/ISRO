@@ -317,45 +317,80 @@ export function IntensityChart({ regions }: { regions: { name: string; intensity
 
 // Trained-model comparison — real accuracy/precision/recall from each
 // model's own held-out test set, and each model's current live
-// probability output, side by side.
+// probability output, side by side. Line charts with thick strokes
+// (stock-chart style) rather than bars, per request.
 const TRAINED_MODEL_COLORS = { accuracy: '#0e7490', precision: '#7e22ce', recall: '#c2410c' };
 
 export function TrainedModelMetricsChart({ data }: { data: { model: string; accuracy: number; precision: number; recall: number }[] }) {
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
           <XAxis dataKey="model" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
           <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, undefined]} />
           <Legend />
-          <Bar dataKey="accuracy" name="Test Accuracy" fill={TRAINED_MODEL_COLORS.accuracy} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="precision" name="Precision" fill={TRAINED_MODEL_COLORS.precision} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="recall" name="Recall" fill={TRAINED_MODEL_COLORS.recall} radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Line type="monotone" dataKey="accuracy" name="Test Accuracy" stroke={TRAINED_MODEL_COLORS.accuracy} strokeWidth={4} dot={{ r: 6 }} />
+          <Line type="monotone" dataKey="precision" name="Precision" stroke={TRAINED_MODEL_COLORS.precision} strokeWidth={4} dot={{ r: 6 }} />
+          <Line type="monotone" dataKey="recall" name="Recall" stroke={TRAINED_MODEL_COLORS.recall} strokeWidth={4} dot={{ r: 6 }} />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-const LIVE_PROB_COLORS = ['#1a3d8f', '#0f766e', '#7e22ce'];
-
 export function TrainedModelProbabilityChart({ data }: { data: { model: string; probability: number }[] }) {
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
           <XAxis dataKey="model" stroke={CHART_COLORS.axis} tick={{ fontSize: 11 }} />
           <YAxis stroke={CHART_COLORS.axis} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
           <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, 'Live probability']} />
-          <Bar dataKey="probability" name="Live probability (C-class-or-above, next 6h)" radius={[4, 4, 0, 0]} barSize={64}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={LIVE_PROB_COLORS[i % LIVE_PROB_COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
+          <Line type="monotone" dataKey="probability" name="Live probability (C-class-or-above, next 6h)" stroke="#1a3d8f" strokeWidth={4} dot={{ r: 7 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Genuine multi-year real time series — daily-mean NOAA flux and Aditya-L1
+// counts across the real sampled training window, styled like a stock
+// price chart (continuous thick line, filled area beneath).
+export function TrainedModelHistoryChart({ data }: { data: { date: string; noaa_flux?: number; adityal1_counts?: number }[] }) {
+  return (
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 40 }}>
+          <defs>
+            <linearGradient id="grad-noaa-history" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={CHART_COLORS.longwave} stopOpacity={0.35} />
+              <stop offset="95%" stopColor={CHART_COLORS.longwave} stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="grad-adityal1-history" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#7e22ce" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="#7e22ce" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+          <XAxis dataKey="date" stroke={CHART_COLORS.axis} tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={60} minTickGap={20} />
+          <YAxis
+            yAxisId="noaa"
+            stroke={CHART_COLORS.axis}
+            tick={{ fontSize: 10 }}
+            scale="log"
+            domain={['auto', 'auto']}
+            tickFormatter={(v) => Number(v).toExponential(0)}
+            label={{ value: 'NOAA flux (W/m²)', angle: -90, position: 'insideLeft', fontSize: 10, fill: CHART_COLORS.axis }}
+          />
+          <YAxis yAxisId="adityal1" orientation="right" stroke={CHART_COLORS.axis} tick={{ fontSize: 10 }} label={{ value: 'Aditya-L1 counts', angle: 90, position: 'insideRight', fontSize: 10, fill: CHART_COLORS.axis }} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Legend />
+          <Area yAxisId="noaa" type="monotone" dataKey="noaa_flux" name="NOAA GOES-18 flux (daily mean)" stroke={CHART_COLORS.longwave} strokeWidth={4} fill="url(#grad-noaa-history)" connectNulls />
+          <Area yAxisId="adityal1" type="monotone" dataKey="adityal1_counts" name="Aditya-L1 SoLEXS counts (daily mean)" stroke="#7e22ce" strokeWidth={4} fill="url(#grad-adityal1-history)" connectNulls />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

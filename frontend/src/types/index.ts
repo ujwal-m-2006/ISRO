@@ -442,17 +442,28 @@ export interface TrainedModelVariant {
   reason?: string;
 }
 
+export interface TrainedModelDailyPoint {
+  date: string;
+  noaa_flux?: number;
+  adityal1_counts?: number;
+}
+
 export interface TrainedModelResponse {
   available: boolean;
   message?: string;
   trained_at?: string;
   training_window?: {
-    noaa_start: string;
-    noaa_end: string;
+    span_start: string;
+    span_end: string;
+    sample_every_days: number;
+    noaa_days_fetched: number;
+    noaa_points: number;
     adityal1_points: number;
     adityal1_available: boolean;
+    sampling_note: string;
   };
   target?: string;
+  daily_series?: TrainedModelDailyPoint[];
   variants: Record<'single_model' | 'dual_model' | 'multi_model', TrainedModelVariant>;
 }
 

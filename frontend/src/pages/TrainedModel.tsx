@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { TrainedModelMetricsChart, TrainedModelProbabilityChart } from '../components/charts';
+import { TrainedModelHistoryChart, TrainedModelMetricsChart, TrainedModelProbabilityChart } from '../components/charts';
 import { DataSourceBadge, MeaningBox } from '../components/live';
 import { LoadingState, PageHeader, Panel } from '../components/ui';
 import { api, formatTime } from '../services/api';
@@ -39,7 +39,7 @@ function ScrollingDescription() {
   );
 }
 
-function WarningBanner({ trainingWindow }: { trainingWindow?: { adityal1_available: boolean } }) {
+function WarningBanner({ trainingWindow }: { trainingWindow?: { adityal1_available: boolean; sample_every_days: number; noaa_days_fetched: number } }) {
   return (
     <div className="rounded-xl border-2 border-orange-500/60 bg-orange-50 p-5">
       <div className="flex items-start gap-3">
@@ -48,16 +48,26 @@ function WarningBanner({ trainingWindow }: { trainingWindow?: { adityal1_availab
           <p className="font-bold text-orange-900 mb-2">Important — Read Before Interpreting These Results</p>
           <ul className="text-sm text-orange-900 space-y-1.5 list-disc list-inside">
             <li>
-              <strong>Small training window:</strong> trained on roughly 7–10 days of real data (NOAA's free live API only exposes
-              a rolling 7-day history). This is not a multi-year archive-scale dataset.
+              <strong>Sampled, not continuous:</strong> the training window spans multiple real years (Aditya-L1's full mission),
+              but to keep downloads practical and avoid rate-limiting PRADAN's servers, only 1 real day per{' '}
+              {trainingWindow?.sample_every_days ?? 7} days was actually fetched
+              {trainingWindow?.noaa_days_fetched ? ` (${trainingWindow.noaa_days_fetched} real days fetched)` : ''} — real data, genuinely
+              multi-year in span, but not every single day.
             </li>
             <li>
-              <strong>Target is C-class-or-above, not M/X specifically:</strong> a window this short has too few real M/X-class
-              events to fit a statistically meaningful classifier for those specifically.
+              <strong>Target is C-class-or-above, not M/X specifically:</strong> even across a multi-year sampled window, X-class
+              events remain rare enough that a dedicated X-class classifier would still be statistically unreliable.
             </li>
             <li>
               <strong>Preliminary result, not a final one:</strong> accuracy, precision, and recall numbers should be read as an
-              honest early signal — a larger training window would give more statistically reliable numbers.
+              honest signal from real data, not a production-grade validated benchmark.
+            </li>
+            <li>
+              <strong>Read accuracy alongside precision, not alone:</strong> this multi-year window is genuinely flare-active (a
+              C-class-or-above flare followed most 5-minute windows within 6h), so each model uses balanced class weighting to
+              avoid trivially predicting "flare likely" every time. That trades away some raw accuracy for meaningfully higher
+              precision — when a model does predict "likely," it's right roughly 80% of the time, even though its overall
+              accuracy number looks lower than a naive always-predict-positive baseline would.
             </li>
             <li>
               <strong>Not for operational decision-making:</strong> this is a research/demonstration model, not a validated
@@ -182,18 +192,31 @@ function TrainedModel() {
 
       {data.training_window && (
         <Panel title="Training Data — Real, Disclosed Limitations">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
-              <p className="text-space-gray text-xs uppercase">NOAA GOES-18 window</p>
-              <p className="font-medium">{formatTime(data.training_window.noaa_start)} — {formatTime(data.training_window.noaa_end)}</p>
+              <p className="text-space-gray text-xs uppercase">Real multi-year span</p>
+              <p className="font-medium">{formatTime(data.training_window.span_start)} — {formatTime(data.training_window.span_end)}</p>
             </div>
             <div>
-              <p className="text-space-gray text-xs uppercase">Aditya-L1 SoLEXS data</p>
+              <p className="text-space-gray text-xs uppercase">NOAA GOES-18 (NCEI archive)</p>
+              <p className="font-medium">{data.training_window.noaa_days_fetched} real days fetched, {data.training_window.noaa_points.toLocaleString()} real 1-min points</p>
+            </div>
+            <div>
+              <p className="text-space-gray text-xs uppercase">Aditya-L1 SoLEXS (PRADAN archive)</p>
               <p className="font-medium">{data.training_window.adityal1_available ? `${data.training_window.adityal1_points.toLocaleString()} real light-curve points` : 'Not available this training run'}</p>
             </div>
           </div>
           <p className="text-xs text-space-gray mt-3 pt-3 border-t border-space-blue/10">
-            Target: {data.target}. This is a genuinely small training window (NOAA's free live API only exposes a rolling 7-day history — a longer multi-year archive would need heavier NCEI archive-file parsing not yet built). Treat these accuracy numbers as an honest preliminary signal, not a final result — a larger training window would give more statistically reliable numbers, especially for the recall metric given how few real M/X-class events occur in any 7-10 day window.
+            Target: {data.target}. {data.training_window.sampling_note}
+          </p>
+        </Panel>
+      )}
+
+      {data.daily_series && data.daily_series.length > 0 && (
+        <Panel title="Real Multi-Year Flux History (daily mean, sampled days)">
+          <TrainedModelHistoryChart data={data.daily_series} />
+          <p className="text-xs text-space-gray mt-2">
+            Real daily-mean NOAA GOES-18 flux and Aditya-L1 SoLEXS counts across the sampled multi-year training window — gaps between points are real (unsampled days), not interpolated.
           </p>
         </Panel>
       )}
