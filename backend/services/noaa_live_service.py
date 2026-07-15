@@ -158,7 +158,25 @@ class NOAALiveService:
         if not raw:
             return []
         latest_date = max(r.get("observed_date", "") for r in raw)
-        regions = [r for r in raw if r.get("observed_date") == latest_date and r.get("status") == "f"]
+        todays_rows = [r for r in raw if r.get("observed_date") == latest_date]
+
+        # NOAA revises each day's region report through the day: rows start
+        # as "d" (draft/provisional) and get superseded by "f" (final) later.
+        # Only accepting "f" meant this returned zero regions for hours every
+        # day until NOAA got around to finalizing — real region data (still
+        # genuine NOAA numbers, just not yet marked final) sat unused, which
+        # also silently zeroed out the NOAA-official signal in the flare
+        # ensemble. Dedupe by region number, preferring the most-final status
+        # available rather than requiring "f" specifically.
+        status_rank = {"f": 2, "d": 1}
+        best_by_region: Dict[Any, Dict[str, Any]] = {}
+        for r in todays_rows:
+            region_num = r.get("region")
+            rank = status_rank.get(r.get("status"), 0)
+            existing = best_by_region.get(region_num)
+            if existing is None or rank > status_rank.get(existing.get("status"), 0):
+                best_by_region[region_num] = r
+        regions = list(best_by_region.values())
         # NOAA sends explicit `null` (not a missing key) for newly-rotating
         # regions not yet analyzed — dict.get(key, default) only substitutes
         # the default when the key is absent, so a `None` value here would
