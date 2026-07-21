@@ -135,7 +135,7 @@ class NOAALiveService:
     def fetch_recent_flares(self) -> List[Dict[str, Any]]:
         raw = self._get_json(f"{GOES_PRIMARY}/xray-flares-7-day.json")
         flares = []
-        for i, row in enumerate(sorted(raw, key=lambda r: r.get("max_time", ""), reverse=True)):
+        for i, row in enumerate(sorted(raw, key=lambda r: r.get("max_time") or "", reverse=True)):
             flares.append(
                 {
                     "id": i + 1,
@@ -157,7 +157,7 @@ class NOAALiveService:
         raw = self._get_json(f"{NOAA_BASE}/solar_regions.json")
         if not raw:
             return []
-        latest_date = max(r.get("observed_date", "") for r in raw)
+        latest_date = max(r.get("observed_date") or "" for r in raw)
         todays_rows = [r for r in raw if r.get("observed_date") == latest_date]
 
         # NOAA revises each day's region report through the day: rows start
